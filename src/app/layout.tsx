@@ -30,7 +30,7 @@ export default function RootLayout({
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var r=localStorage.getItem("meshlens-settings");if(!r)return;var s=JSON.parse(r);if(s.bg){document.documentElement.style.setProperty("--nav-bg",s.bg);document.body.style.background=s.bg;}if(s.accent){document.documentElement.style.setProperty("--color-mesh-accent",s.accent);document.documentElement.style.setProperty("--color-mesh-accent-dim",s.accent+"1a");}if(s.font){document.documentElement.setAttribute("data-font",s.font);}}catch(e){}})();`,
+            __html: `(function(){var bg="#fffef5",ac="#000000",fn="dm-sans";try{var r=localStorage.getItem("meshlens-settings");if(r){var s=JSON.parse(r);if(s.bg)bg=s.bg;if(s.accent)ac=s.accent;if(s.font)fn=s.font;}}catch(e){}document.documentElement.style.setProperty("--nav-bg",bg);document.body.style.background=bg;document.documentElement.style.setProperty("--color-mesh-accent",ac);document.documentElement.style.setProperty("--color-mesh-accent-dim",ac+"1a");document.documentElement.setAttribute("data-font",fn);})();`,
           }}
         />
       </head>
