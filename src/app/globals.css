@@ -2,13 +2,14 @@
 
 @theme {
   /* ── Surface & text ─────────────────────────── */
-  --color-mesh-bg: #f4f4f4;
-  --color-mesh-bg-light: #ececec;
+  --nav-bg: #fffef5;
+  --color-mesh-bg: #fffef5;
+  --color-mesh-bg-light: #faf9f0;
   --color-mesh-bg-card: #ffffff;
   --color-mesh-text: #1a1a1a;
   --color-mesh-text-muted: #71717a;
-  --color-mesh-accent: #56B265;
-  --color-mesh-accent-dim: rgba(86, 178, 101, 0.10);
+  --color-mesh-accent: #000000;
+  --color-mesh-accent-dim: rgba(0, 0, 0, 0.10);
 
   /* ── Fresh palette ──────────────────────────── */
   --color-fresh-green-tea: #F2F6EB;
