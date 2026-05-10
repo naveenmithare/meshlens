@@ -593,54 +593,39 @@ export default function MeshAtlasClient({ graph, overview, domains, apps, produc
           placedMap.set(n.id, { x, y });
         });
       } else {
-        if (type === "SOURCE_ALIGNED") {
-          for (const sec of domainSections) {
-            const items = layer.filter(n => n.domainName === sec.domain);
-            if (!items.length) continue;
-            const radii = items.map(n => bubbleRadius(n));
-            const minGap = cfg.bubbleGap;
-            const totalNeeded = radii.reduce((s, r, i) => s + r * 2 + (i < radii.length - 1 ? minGap : 0), 0);
-            const arcLen = arcR * Math.abs(tToAngle(sec.tStart, cfg.pad) - tToAngle(sec.tEnd, cfg.pad));
-            const scale = arcLen > 0 && totalNeeded > arcLen * 0.9 ? (arcLen * 0.9) / totalNeeded : 1;
-            let cursor = 0;
-            const tPositions: number[] = [];
-            items.forEach((_, i) => {
-              const br = radii[i] * scale;
-              cursor += br;
-              const frac = items.length === 1 ? 0.5 : cursor / (totalNeeded * scale);
-              tPositions.push(sec.tStart + (sec.tEnd - sec.tStart) * (0.05 + frac * 0.9));
-              cursor += br + (i < items.length - 1 ? minGap * scale : 0);
-            });
-            items.forEach((n, i) => {
-              const [x, y] = _arc(arcR, tPositions[i]);
-              const ups = upstreamMap[n.id] || [];
-              out.push({ ...n, x, y, r: radii[i], upstreamIds: ups });
-              placedMap.set(n.id, { x, y });
-            });
-          }
-        } else {
-          const allItems = layer;
-          const radii = allItems.map(n => bubbleRadius(n));
-          const minGap = cfg.bubbleGap;
+        const minGap = cfg.bubbleGap;
+        const placedIds = new Set<string>();
+        const placeItemsOnRange = (items: GNode[], tStart: number, tEnd: number) => {
+          if (!items.length) return;
+          const radii = items.map(n => bubbleRadius(n));
           const totalNeeded = radii.reduce((s, r, i) => s + r * 2 + (i < radii.length - 1 ? minGap : 0), 0);
-          const fullArcLen = arcR * Math.abs(tToAngle(0.02, cfg.pad) - tToAngle(0.98, cfg.pad));
-          const scale = fullArcLen > 0 && totalNeeded > fullArcLen * 0.9 ? (fullArcLen * 0.9) / totalNeeded : 1;
+          const arcLen = arcR * Math.abs(tToAngle(tStart, cfg.pad) - tToAngle(tEnd, cfg.pad));
+          const scale = arcLen > 0 && totalNeeded > arcLen * 0.9 ? (arcLen * 0.9) / totalNeeded : 1;
           let cursor = 0;
           const tPositions: number[] = [];
-          allItems.forEach((_, i) => {
+          items.forEach((_, i) => {
             const br = radii[i] * scale;
             cursor += br;
-            const frac = allItems.length === 1 ? 0.5 : cursor / (totalNeeded * scale);
-            tPositions.push(0.02 + frac * 0.96);
-            cursor += br + (i < allItems.length - 1 ? minGap * scale : 0);
+            const frac = items.length === 1 ? 0.5 : cursor / (totalNeeded * scale);
+            tPositions.push(tStart + (tEnd - tStart) * (0.05 + frac * 0.9));
+            cursor += br + (i < items.length - 1 ? minGap * scale : 0);
           });
-          allItems.forEach((n, i) => {
+          items.forEach((n, i) => {
             const [x, y] = _arc(arcR, tPositions[i]);
             const ups = upstreamMap[n.id] || [];
             out.push({ ...n, x, y, r: radii[i], upstreamIds: ups });
             placedMap.set(n.id, { x, y });
+            placedIds.add(n.id);
           });
+        };
+
+        for (const sec of domainSections) {
+          const items = layer.filter(n => !placedIds.has(n.id) && n.domainName === sec.domain);
+          placeItemsOnRange(items, sec.tStart, sec.tEnd);
         }
+
+        const remaining = layer.filter(n => !placedIds.has(n.id));
+        placeItemsOnRange(remaining, 0.02, 0.98);
       }
     }
     return out;
@@ -1024,65 +1009,105 @@ export default function MeshAtlasClient({ graph, overview, domains, apps, produc
   const visibleLabels = useMemo(() => {
     if (!cfg.show.productLabels) return [];
     const pl = cfg.prodLabel;
-    const TIER_PRIORITY: Record<string, number> = { GOLD: 0, SILVER: 1, BRONZE: 2 };
-    const TYPE_PRIORITY: Record<string, number> = { CONSUMER_ALIGNED: 0, BUSINESS: 1, SOURCE_ALIGNED: 2 };
-    const sorted = [...pNodes].sort((a, b) => {
-      const tp = (TYPE_PRIORITY[a.productType] ?? 3) - (TYPE_PRIORITY[b.productType] ?? 3);
-      if (tp !== 0) return tp;
-      return (TIER_PRIORITY[a.tier] ?? 3) - (TIER_PRIORITY[b.tier] ?? 3);
-    });
-    const typeIdx: Record<string, number> = {};
+
     const placed: { x: number; y: number; w: number; h: number }[] = [];
     const result: { n: PNode; lx: number; ly: number; fontSize: number; label: string; rot: number; anchor: "start" | "middle" | "end"; stagger: boolean; visible: boolean }[] = [];
 
-    for (const n of sorted) {
-      const pt = n.productType;
-      if (!(pt in typeIdx)) typeIdx[pt] = 0;
-      const idx = typeIdx[pt]++;
+    const sourceNodes = pNodes.filter(n => n.productType === "SOURCE_ALIGNED");
+    const bizNodes = [...pNodes.filter(n => n.productType === "BUSINESS")];
+    const conNodes = [...pNodes.filter(n => n.productType === "CONSUMER_ALIGNED")];
+
+    // --- Source layer: original algorithm (preserves user's manual drag positions) ---
+    const srcTypeIdx = { count: 0 };
+    for (const n of sourceNodes) {
+      const idx = srcTypeIdx.count++;
       const angle = Math.atan2(n.y - cfg.cy, n.x - cfg.cx);
       const per = cfg.prodLabel.perProduct?.[n.id] || { radius: 0, angle: 0, x: 0, y: 0, rotation: 0 };
-      const isSource = pt === "SOURCE_ALIGNED";
-      const isBusiness = pt === "BUSINESS";
-      const stagger = (isSource || isBusiness) && idx % 2 === 1;
-      const layerOffset = isSource ? pl.srcOffset : isBusiness ? pl.bizOffset : pl.conOffset;
-      const layerAngleDeg = isSource ? pl.srcAngle : isBusiness ? pl.bizAngle : pl.conAngle;
-      const labelAngle = angle + ((layerAngleDeg + per.angle) * Math.PI) / 180;
-      const offset = n.r + pl.offset + layerOffset + per.radius + (stagger ? pl.staggerGap : 0);
+      const stagger = idx % 2 === 1;
+      const labelAngle = angle + ((pl.srcAngle + per.angle) * Math.PI) / 180;
+      const offset = n.r + pl.offset + pl.srcOffset + per.radius + (stagger ? pl.staggerGap : 0);
       let lx = n.x + offset * Math.cos(labelAngle);
       let ly = n.y + offset * Math.sin(labelAngle);
       if (cfg.layout === "arc") {
-        // Place labels slightly below the diameter (upstream<->downstream) line.
-        // Choose the normal that points downward on screen for a consistent "below" side.
         let nx = Math.sin(labelAngle);
         let ny = -Math.cos(labelAngle);
         if (ny < 0) { nx = -nx; ny = -ny; }
-        const below = 5;
-        lx += nx * below;
-        ly += ny * below;
+        lx += nx * 5;
+        ly += ny * 5;
       }
       lx += pl.xOffset + per.x;
       ly += pl.yOffset + per.y;
-      const fontSize = isSource ? pl.srcSize : isBusiness ? pl.bizSize : pl.conSize;
-      const maxLen = isSource ? 12 : isBusiness ? 16 : 20;
-      const label = n.label.length > maxLen ? n.label.slice(0, maxLen - 1) + "\u2026" : n.label;
+      const fontSize = pl.srcSize;
+      const label = n.label.length > 12 ? n.label.slice(0, 11) + "\u2026" : n.label;
       const rot = cfg.layout === "arc" ? (labelAngle * 180) / Math.PI + pl.rotation + per.rotation : pl.rotation + per.rotation;
-      const anchor = "middle" as "middle" | "end" | "start";
       const w = label.length * fontSize * 0.55;
       const h = fontSize * 1.4;
       let visible = true;
       if (cfg.show.smartLabels) {
         for (const p of placed) {
-          if (Math.abs(lx - p.x) < (w + p.w) / 2 && Math.abs(ly - p.y) < (h + p.h) / 2) {
-            visible = false;
-            break;
-          }
+          if (Math.abs(lx - p.x) < (w + p.w) / 2 && Math.abs(ly - p.y) < (h + p.h) / 2) { visible = false; break; }
         }
       }
       if (visible) placed.push({ x: lx, y: ly, w, h });
-      result.push({ n, lx, ly, fontSize, label, rot, anchor, stagger, visible });
+      result.push({ n, lx, ly, fontSize, label, rot, anchor: "middle", stagger, visible });
     }
+
+    // --- Business & Consumer: tangent-aligned on a guide arc, matching source style ---
+    const arcLabel = (nodes: PNode[], layerKey: string, fontSize: number, maxLen: number, layerOff: number) => {
+      const arcR = cfg.radii[layerKey as keyof typeof cfg.radii] ?? 300;
+      const guideR = arcR + layerOff + pl.offset + 8;
+
+      for (const n of nodes) {
+        const per = cfg.prodLabel.perProduct?.[n.id] || { radius: 0, angle: 0, x: 0, y: 0, rotation: 0 };
+        const radAngle = Math.atan2(n.y - cfg.cy, n.x - cfg.cx);
+        const labelR = guideR + per.radius;
+
+        if (cfg.layout === "arc") {
+          let lx = cfg.cx + labelR * Math.cos(radAngle);
+          let ly = cfg.cy + labelR * Math.sin(radAngle);
+          lx += pl.xOffset + per.x;
+          ly += pl.yOffset + per.y;
+
+          const radDeg = (radAngle * 180) / Math.PI;
+          const rot = radDeg + pl.rotation + per.rotation;
+
+          const label = n.label.length > maxLen ? n.label.slice(0, maxLen - 1) + "\u2026" : n.label;
+          const w = label.length * fontSize * 0.55;
+          const h = fontSize * 1.4;
+          let visible = true;
+          if (cfg.show.smartLabels) {
+            for (const p of placed) {
+              if (Math.abs(lx - p.x) < (w + p.w) / 2 && Math.abs(ly - p.y) < (h + p.h) / 2) { visible = false; break; }
+            }
+          }
+          if (visible) placed.push({ x: lx, y: ly, w, h });
+          result.push({ n, lx, ly, fontSize, label, rot, anchor: "middle", stagger: false, visible });
+        } else {
+          const labelAngle = radAngle + ((per.angle) * Math.PI) / 180;
+          const offset = n.r + pl.offset + layerOff + per.radius;
+          let lx = n.x + offset * Math.cos(labelAngle) + pl.xOffset + per.x;
+          let ly = n.y + offset * Math.sin(labelAngle) + pl.yOffset + per.y;
+          const label = n.label.length > maxLen ? n.label.slice(0, maxLen - 1) + "\u2026" : n.label;
+          const rot = pl.rotation + per.rotation;
+          const w = label.length * fontSize * 0.55;
+          const h = fontSize * 1.4;
+          let visible = true;
+          if (cfg.show.smartLabels) {
+            for (const p of placed) {
+              if (Math.abs(lx - p.x) < (w + p.w) / 2 && Math.abs(ly - p.y) < (h + p.h) / 2) { visible = false; break; }
+            }
+          }
+          if (visible) placed.push({ x: lx, y: ly, w, h });
+          result.push({ n, lx, ly, fontSize, label, rot, anchor: "middle", stagger: false, visible });
+        }
+      }
+    };
+
+    arcLabel(bizNodes, "BUSINESS", pl.bizSize, 18, pl.bizOffset);
+    arcLabel(conNodes, "CONSUMER_ALIGNED", pl.conSize, 22, pl.conOffset);
+
     return result;
-  }, [pNodes, cfg.show.productLabels, cfg.show.smartLabels, cfg.prodLabel, cfg.cy, cfg.cx, cfg.layout]);
+  }, [pNodes, cfg.show.productLabels, cfg.show.smartLabels, cfg.prodLabel, cfg.cy, cfg.cx, cfg.layout, cfg.radii]);
 
   const bdr = cfg.paneBorder;
 
