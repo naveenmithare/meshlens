@@ -32,10 +32,10 @@
   --color-health-degraded: #FFCE55;
   --color-health-down: #FB6E52;
 
-  /* ── Tiers ──────────────────────────────────── */
-  --color-tier-gold: #FFCE55;
-  --color-tier-silver: #92C3A4;
-  --color-tier-bronze: #c2702e;
+  /* ── Product layer accents ──────────────────── */
+  --color-layer-source: #c2702e;
+  --color-layer-business: #FFCE55;
+  --color-layer-consumer: #56B265;
 
   /* ── Border ─────────────────────────────────── */
   --color-mesh-border: #e8e8e2;
@@ -76,6 +76,39 @@ html[data-font="space-grotesk"] body { font-family: var(--font-space-grotesk), s
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.08); border-radius: 10px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(0, 0, 0, 0.15); }
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.light-h-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.26) rgba(0, 0, 0, 0.08);
+  -webkit-overflow-scrolling: touch;
+}
+
+.light-h-scroll::-webkit-scrollbar {
+  height: 5px;
+}
+
+.light-h-scroll::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.26);
+  border-radius: 999px;
+}
+
+.light-h-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.36);
+}
+
+.light-h-scroll::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 999px;
+}
 
 
 /* ── Section spacing ─────────────────────── */

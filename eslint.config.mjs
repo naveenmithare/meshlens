@@ -7,12 +7,23 @@ const eslintConfig = defineConfig([
   ...nextTs,
   // Override default ignores of eslint-config-next.
   globalIgnores([
-    // Default ignores of eslint-config-next:
     ".next/**",
     "out/**",
     "build/**",
     "next-env.d.ts",
   ]),
+  {
+    files: [
+      "src/app/meshatlas/MeshAtlasClient.tsx",
+      "src/app/meshatlas/playground/**",
+      "src/app/meshatlas/lib/**",
+      "src/app/meshatlas/components/**",
+    ],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-unused-vars": "warn",
+    },
+  },
 ]);
 
 export default eslintConfig;

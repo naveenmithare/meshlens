@@ -38,7 +38,6 @@ interface Product {
   domain_id: string;
   domain_name: string;
   color_hex: string;
-  tier: string;
   quality_score: number;
   sla_freshness: string;
   owner: string;
@@ -119,24 +118,6 @@ function DomainIcon({ name, color, size = 20 }: { name: string; color: string; s
   );
 }
 
-function StatusDot({ status }: { status: string }) {
-  const color =
-    status === "ACTIVE"
-      ? "#22c55e"
-      : status === "PAUSED"
-        ? "#eab308"
-        : status === "BROKEN"
-          ? "#ef4444"
-          : "#94a3b8";
-  return (
-    <span
-      className="inline-block w-2 h-2 rounded-full shrink-0"
-      style={{ backgroundColor: color }}
-      title={status}
-    />
-  );
-}
-
 const APP_TYPE_ICONS: Record<string, string> = {
   CRM: "🏢",
   ERP: "⚙️",
@@ -147,24 +128,6 @@ const APP_TYPE_ICONS: Record<string, string> = {
   DEVTOOLS: "🛠️",
   HRIS: "👥",
   ANALYTICS: "📊",
-};
-
-const PRODUCT_TYPE_LABELS: Record<string, { label: string; color: string; desc: string }> = {
-  SOURCE_ALIGNED: {
-    label: "Source Data Products",
-    color: "#c2702e",
-    desc: "Mirrors of each application. Minimal transformation — schema follows the source faithfully.",
-  },
-  BUSINESS: {
-    label: "Business Data Products",
-    color: "#eab308",
-    desc: "Domain entities that combine multiple sources into a single truth — Customer 360, Revenue Ledger, and similar cross-domain models.",
-  },
-  CONSUMER_ALIGNED: {
-    label: "Consumer Data Products",
-    color: "#22c55e",
-    desc: "Purpose-built for a specific use case — CEO dashboards, ML features, leaderboards.",
-  },
 };
 
 const DOMAIN_STORIES: Record<string, string> = {
@@ -239,7 +202,8 @@ const APP_DESCRIPTIONS: Record<string, string> = {
 
 /* ── main component ── */
 
-export default function IntroClient({ overview, domains, apps, products, policies, lineage }: Props) {
+export default function IntroClient(props: Props) {
+  const { overview, domains, apps, products } = props;
   const [expandedDomain, setExpandedDomain] = useState<string | null>(domains[0]?.domain_name ?? null);
   const grouped = domains.map((d) => ({
     ...d,
@@ -440,7 +404,7 @@ export default function IntroClient({ overview, domains, apps, products, policie
             decisions were made on gut instinct instead of data.
           </p>
           <p>
-            That's why Orange Co adopted a{" "}
+            That&apos;s why Orange Co adopted a{" "}
             <strong className="text-mesh-text">data mesh architecture</strong> — shifting data
             ownership to the domain teams who know it best, while keeping a shared platform
             and federated governance underneath.
@@ -543,7 +507,7 @@ export default function IntroClient({ overview, domains, apps, products, policie
                   <div>
                     <h4 className="text-[17px] font-bold text-mesh-text">{d.domain_name}</h4>
                     <span className="text-[12px] font-medium" style={{ color: d.color_hex }}>
-                      {d.app_count} applications · {d.product_count} data products
+                      {d.app_count} applications
                     </span>
                   </div>
                 </div>
@@ -554,7 +518,6 @@ export default function IntroClient({ overview, domains, apps, products, policie
                       <div className="flex items-center gap-2 mb-2">
                         <span className="text-sm">{APP_TYPE_ICONS[a.app_type] ?? "📦"}</span>
                         <span className="text-[13px] font-bold text-mesh-text">{a.name}</span>
-                        <StatusDot status={a.conn_status} />
                       </div>
                       <div className="flex items-center gap-1.5 mb-2">
                         <Badge color={d.color_hex}>{a.app_type}</Badge>
@@ -636,7 +599,7 @@ export default function IntroClient({ overview, domains, apps, products, policie
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
             {[
               { label: "RBAC", path: "M12 2a5 5 0 015 5v2a2 2 0 012 2v9a2 2 0 01-2 2H7a2 2 0 01-2-2v-9a2 2 0 012-2V7a5 5 0 015-5zm3 7V7a3 3 0 10-6 0v2h6z", desc: "Row & column security per role and environment" },
-              { label: "PII", path: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z", desc: "Automatic masking of sensitive fields" },
+              { label: "PII Masking", path: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z", desc: "Automatic masking of sensitive fields" },
               { label: "Retention", path: "M12 2a10 10 0 100 20 10 10 0 000-20zm0 18a8 8 0 110-16 8 8 0 010 16zm1-13h-2v6l5.25 3.15.75-1.23-4-2.42V7z", desc: "Time-based archival policies per data class" },
               { label: "Regulation", path: "M12 3L2 8v4c0 5.55 3.84 10.74 10 12 6.16-1.26 10-6.45 10-12V8L12 3zm-1 15l-4-4 1.41-1.41L11 15.17l6.59-6.59L19 10l-8 8z", desc: "SOX, GDPR, CCPA — audit trails and consent" },
               { label: "Quality", path: "M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z", desc: "Freshness SLAs, uniqueness, referential integrity" },
@@ -689,9 +652,9 @@ export default function IntroClient({ overview, domains, apps, products, policie
               className="group card-colored" style={{ backgroundColor: v.bg }}>
               <div className="flex items-center gap-3 mb-4">
                 <svg viewBox="0 0 24 24" className="w-7 h-7" fill="#1a1a1a" opacity={0.7}><path d={v.icon} /></svg>
-                <span className="text-[12px] uppercase tracking-[0.1em] font-bold text-mesh-text/70">{v.label}</span>
+                <span className="text-[15px] uppercase tracking-[0.08em] font-bold text-mesh-text/82">{v.label}</span>
               </div>
-              <div className="text-[17px] font-bold text-mesh-text mb-3">{v.title}</div>
+              <div className="text-[15px] font-semibold text-mesh-text/85 mb-3">{v.title}</div>
               <p className="text-[14px] text-mesh-text/65 leading-[1.7] mb-5">{v.desc}</p>
               <div className="flex items-center gap-2 text-[14px] font-bold text-mesh-text">
                 Explore
@@ -897,7 +860,7 @@ function ArchitectureDiagram({ products }: { products: Product[] }) {
     { label: "Observability", desc: "Trace & Debug", color: "#a78bfa" },
   ];
 
-  const govItems = ["RBAC", "PII Masking", "Data Contracts", "Lineage", "Quality SLAs", "Schema Registry"];
+  const govItems = ["RBAC", "PII Masking", "Retention", "Regulation", "Quality", "Lineage"];
 
   const renderBox = (x: number, w: number, label: string, color: string, items: { name: string; icon: string }[]) => {
     const boxH = flowBoxH;

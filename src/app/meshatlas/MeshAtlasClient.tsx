@@ -1,1433 +1,28 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect, useCallback, type ReactNode } from "react";
-
-/* ═══════════════════════════════════════════════════
-   PLAYGROUND CONFIG — all tunable constants
-   ═══════════════════════════════════════════════════ */
-
-interface PlaygroundConfig {
-  layout: "arc";
-  layerColors: Record<string, string>;
-  appTypeColors: Record<string, string>;
-  green: string;
-  red: string;
-  text: string;
-  bg: string;
-  radii: Record<string, number>;
-  bubbleR: Record<string, number>;
-  appDotR: number;
-  cx: number;
-  cy: number;
-  pad: number;
-  vw: number;
-  vh: number;
-  bizBubbleScale: number;
-  conBubbleScale: number;
-  innerDotR: number;
-  bubbleGap: number;
-  equalSpread: boolean;
-  bubbleSizeMode: "uniform" | "upstream";
-  uniformSrcR: number;
-  uniformBizR: number;
-  uniformConR: number;
-  domainColors: Record<string, string>;
-  domainBubbleOpacity: number;
-  groupBubbleOpacity: number;
-  outerBubbleOpacity: Record<string, number>;
-  labelSize: number;
-  domainNameSize: number;
-  legendSize: number;
-  labelOpacity: number;
-  labelWeight: number;
-  prodLabel: {
-    srcSize: number; bizSize: number; conSize: number; offset: number; staggerGap: number; opacity: number; rotation: number;
-    srcOffset: number; bizOffset: number; conOffset: number;
-    srcAngle: number; bizAngle: number; conAngle: number;
-    xOffset: number; yOffset: number;
-    perProduct: Record<string, { radius: number; angle: number; x: number; y: number; rotation: number }>;
-  };
-  show: { productLabels: boolean; layerLabels: boolean; domainNames: boolean; domainLegend: boolean; appTypeLegend: boolean; dataFlowArrow: boolean; separators: boolean; arcBands: boolean; flowAnimation: boolean; searchBar: boolean; smartLabels: boolean; productAnatomyLegend: boolean; dataFlowLegend: boolean; bubbleSizeLegend: boolean };
-  animationPaused: boolean;
-  domainLabelPos: Record<string, { x: number; y: number }>;
-  legendPos: { domain: { x: number; y: number }; appType: { x: number; y: number }; dataFlow: { x: number; y: number }; productAnatomy: { x: number; y: number }; bubbleSize: { x: number; y: number } };
-  /** Per arc layer label offset (SVG px); drag on-canvas or tune in playground */
-  layerLabelPos: Partial<Record<"APPS" | "SOURCE_ALIGNED" | "BUSINESS" | "CONSUMER_ALIGNED", { x: number; y: number }>>;
-  /** Legend typography & colors; empty string color uses main `text` */
-  legendUi: {
-    domainTitleSize: number; domainTitleColor: string; domainTitleOpacity: number; domainDividerOpacity: number;
-    domainNameSize: number; domainNameColor: string; domainNameOpacity: number; domainNameOpacityHover: number;
-    appTypeTitleSize: number; appTypeTitleColor: string; appTypeTitleOpacity: number; appTypeDividerOpacity: number; appTypeRowSize: number; appTypeRowColor: string; appTypeRowOpacity: number;
-    dataFlowTitleSize: number; dataFlowTitleColor: string; dataFlowTitleOpacity: number; dataFlowDividerOpacity: number; dataFlowLineLabelSize: number; dataFlowLineLabelColor: string; dataFlowLineLabelOpacity: number;
-    anatomyTitleSize: number; anatomyTitleColor: string; anatomyTitleOpacity: number; anatomyDividerOpacity: number; anatomyRowTitleSize: number; anatomyRowTitleColor: string; anatomyRowTitleOpacity: number;
-    bubbleTitleSize: number; bubbleSubtitleSize: number; bubbleTitleColor: string; bubbleSubtitleColor: string; bubbleTitleOpacity: number; bubbleSubtitleOpacity: number; bubbleSampleSmallR: number; bubbleSampleLargeR: number;
-    dataFlowArrowOpacity: number; dataFlowArrowStrokeWidth: number;
-  };
-  arrowPos: { x: number; y: number };
-  legendScale: number;
-  appCategoryShapes: Record<string, "circle" | "hexagon" | "square" | "diamond">;
-  customTexts: Array<{ id: string; text: string; x: number; y: number; fontSize: number; color: string; fontWeight: number; opacity: number; width: number; lineHeight: number; textAlign: "left" | "center" | "right" | "justify" | "start" | "end" }>;
-  typoOffset: { layerX: number; layerY: number; domainX: number; domainY: number; legendX: number; legendY: number };
-  separator: { color: string; opacity: number; width: number; dash: number };
-  arcBand: { opacity: number; width: number };
-  flow: {
-    width: number; opacity: number; highlightWidth: number; curveTension: number;
-    idleStyle: "dot" | "glow" | "arrow" | "diamond" | "dash";
-    idleSpeed: number;
-    anchor: { upstream: Record<string, number>; downstream: Record<string, number> };
-    noodle: {
-      appSourceCorridor: number;
-      appSourceSpread: number;
-      sourceBusinessCorridor: number;
-      sameLayerGapFactor: number;
-      sameLayerBase: number;
-      sameLayerScale: number;
-      sameLayerNearSpread: number;
-      sameLayerFarSpread: number;
-      businessBusinessLiftBase: number;
-      businessBusinessLiftScale: number;
-      businessBusinessLiftMax: number;
-      businessBusinessNearSpread: number;
-      businessBusinessFarSpread: number;
-      farSpanThreshold: number;
-      businessConsumerLiftBase: number;
-      businessConsumerLiftScale: number;
-      businessConsumerLiftMax: number;
-      businessConsumerNearSpread: number;
-      businessConsumerFarSpread: number;
-    };
-  };
-  arrowX: number;
-  arrowY: number;
-  arrowRotation: number;
-  arrowLength: number;
-  legendText: {
-    appTitle: string;
-    domainTitle: string;
-    dataFlowTitle: string;
-    dataFlowArrowLabel: string;
-    productLayersTitle: string;
-    bubbleSizeTitle: string;
-    /** If empty, a default is derived from bubble size mode */
-    bubbleSizeSubtitle: string;
-    anatomyRows: Partial<Record<"APPS" | "SOURCE_ALIGNED" | "BUSINESS" | "CONSUMER_ALIGNED", { label: string }>>;
-    pipelineHealthy: string;
-    pipelineBroken: string;
-    appTypeLabels: Record<string, string>;
-  };
-  customSeparators: Array<{ id: string; x1: number; y1: number; x2: number; y2: number; color: string; width: number; opacity: number; dash: number }>;
-  panelBg: string;
-  panelGradient: { enabled: boolean; type: "linear" | "radial"; color1: string; color2: string; color3: string; midStop: number; angle: number; opacity: number };
-  paneBorder: { color: string; width: number; radius: number; padTop: number; padBottom: number; padSide: number };
-  sortMode: "custom" | "alpha" | "appCount" | "upstream";
-  arrowColor: string;
-  /** Copy header typography (and optional widget shell) from one right-hand tab to the others */
-  panelSync: { sourcePanel: "overview" | "cost" | "catalogue" | "quality" | "pipeline"; includeWidgetShell: boolean };
-  costPanel: {
-    widgetBg: string;
-    widgetBorder: string;
-    widgetRadius: number;
-    sectionGap: number;
-    titleSize: number;
-    banSize: number;
-    labelSize: number;
-    tabSize: number;
-    barHeight: number;
-    chartHeight: number;
-    chartPadLeft: number;
-    chartPadBottom: number;
-    lineWidth: number;
-    dotRadius: number;
-    dotFill: string;
-    dotStrokeWidth: number;
-    mutedColor: string;
-    posColor: string;
-    negColor: string;
-    chartLineColor: string;
-    chartAreaColor: string;
-    chartAreaOpacity: number;
-    chartGridColor: string;
-    chartGridWidth: number;
-    chartAxisFontSize: number;
-    chartAxisColor: string;
-    chartMonthFontSize: number;
-    chartMonthColor: string;
-    chartDotStrokeColor: string;
-    chartPadTop: number;
-    chartPadRight: number;
-    tableFontSize: number;
-    tableMaxHeight: number;
-    tableHeaderBg: string;
-    tableHeaderColor: string;
-    catIngestionColor: string;
-    catProcessingColor: string;
-    catOrchestrationColor: string;
-    catStorageColor: string;
-    selTitleSize: number;
-    selBanSize: number;
-    selLabelSize: number;
-    selMutedColor: string;
-    selBarHeight: number;
-    selCatLabelSize: number;
-    selTrendTabSize: number;
-    selAppNameSize: number;
-    selAppCostSize: number;
-    selChartGridColor: string;
-    selChartAxisColor: string;
-    selChartMonthColor: string;
-    selChartLineColor: string;
-    selChartAreaOpacity: number;
-    selChartLineWidth: number;
-    selChartDotRadius: number;
-    selChartAxisFontSize: number;
-    selChartMonthFontSize: number;
-    /** Selected-product “Cost Trend” SVG layout (matches main mesh chart when tuned similarly) */
-    selChartWidth: number;
-    selChartHeight: number;
-    selChartPadLeft: number;
-    selChartPadRight: number;
-    selChartPadTop: number;
-    selChartPadBottom: number;
-    selChartGridLineWidth: number;
-    selChartDotStrokeWidth: number;
-    selChartDotFill: string;
-    selTitleColor: string;
-    selMutedOverride: string;
-    /** No product selected — extra typography */
-    nsPageTitleColor: string;
-    nsCaptionSize: number;
-    nsVsLabelSize: number;
-    nsDeltaSize: number;
-    nsTrendTotalSize: number;
-    nsTrendYearSize: number;
-    nsTableDomainSize: number;
-    nsSortBtnSize: number;
-    /** Selected product — inner cards (defaults match overview sel cards) */
-    selWidgetBg: string;
-    selWidgetBorder: string;
-    /** Vertical gap between blocks when a product is selected */
-    selSectionGap: number;
-  };
-  overviewPanel: {
-    typeBubbleSize: number;
-    typeAppDotR: number;
-    domainBubbleSize: number;
-    domainAppDotR: number;
-    productDotR: number;
-    dotActiveOpacity: number;
-    dotSpacing: number;
-    cardBg: string;
-    cardBorder: string;
-    cardRadius: number;
-    cardShadow: boolean;
-    sectionGap: number;
-    titleSize: number;
-    banSize: number;
-    labelSize: number;
-    gaugeSize: number;
-    barHeight: number;
-    tabBg: string;
-    tabTextColor: string;
-    tabInactiveColor: string;
-    tabFontSize: number;
-    domainOutlineWidth: number;
-    domainFillOpacity: number;
-    domainCircleGap: number;
-    domainLabelColor: string;
-    domainLabelSize: number;
-    countSize: number;
-    kpiIconBgOpacity: number;
-    kpiNumberColor: string;
-    kpiLabelColor: string;
-    selBannerNameSize: number;
-    selBannerDescSize: number;
-    selBannerLabelSize: number;
-    selKpiValueSize: number;
-    selKpiLabelSize: number;
-    selSectionHeaderSize: number;
-    selItemNameSize: number;
-    selItemDotSize: number;
-    selLayerLabelSize: number;
-    selCardRadius: number;
-    selCardBg: string;
-    selCardBorder: string;
-    selSectionGap: number;
-    selStarSize: number;
-    selDomainSize: number;
-    selBannerOverlineColor: string;
-    selBannerTitleColor: string;
-    selBannerDescColor: string;
-    selBannerPillTextColor: string;
-    selBannerDomainTextColor: string;
-    selKpiQualityValueColor: string;
-    selKpiQualityLabelColor: string;
-    selKpiRatingValueColor: string;
-    selKpiRatingLabelColor: string;
-    selKpiSlaValueColor: string;
-    selKpiSlaLabelColor: string;
-    selLineageSectionTitleColor: string;
-    selLineageItemTextColor: string;
-    selClearLinkColor: string;
-    /** No product selected — page header */
-    nsPageTitleSize: number;
-    nsPageSubtitleSize: number;
-    nsPageTitleColor: string;
-    nsPageSubtitleColor: string;
-    /** No selection — "Mesh Entities" card */
-    nsEntitiesTitleSize: number;
-    nsEntitiesSubtitleSize: number;
-    nsEntitiesTitleColor: string;
-    nsEntitiesSubtitleColor: string;
-    nsKpiIconBox: number;
-    nsKpiIconSvg: number;
-  };
-  cataloguePanel: {
-    widgetBg: string;
-    widgetBorder: string;
-    widgetRadius: number;
-    sectionGap: number;
-    titleSize: number;
-    subtitleSize: number;
-    headerTextColor: string;
-    headerSubColor: string;
-    tabHeight: number;
-    tabRadius: number;
-    tabActiveTextColor: string;
-    tabInactiveTextColor: string;
-    tabFontSize: number;
-    gridCols: number;
-    gridGap: number;
-    listMaxHeight: number;
-    cardBg: string;
-    cardBorder: string;
-    cardRadius: number;
-    cardShadow: boolean;
-    cardHoverBg: string;
-    bannerHeight: number;
-    cardNameSize: number;
-    cardNameColor: string;
-    cardDescSize: number;
-    descColor: string;
-    cardMetaSize: number;
-    metaColor: string;
-    tagBg: string;
-    tagColor: string;
-    tagFontSize: number;
-    tagRadius: number;
-    tabCountSize: number;
-    showBanner: boolean;
-    searchBg: string;
-    searchBorder: string;
-    searchTextColor: string;
-    searchPlaceholderColor: string;
-    searchFontSize: number;
-    searchRadius: number;
-    searchHeight: number;
-    starSize: number;
-    domainDotSize: number;
-    separatorColor: string;
-    infoIconSize: number;
-    infoIconBg: string;
-    infoIconActiveBg: string;
-    infoIconColor: string;
-    infoIconActiveColor: string;
-    rubricWidth: number;
-    rubricTitleSize: number;
-    rubricStarSize: number;
-    rubricLabelSize: number;
-    rubricDescSize: number;
-    selBannerNameSize: number;
-    selBannerDescSize: number;
-    selBannerLabelSize: number;
-    selStarSize: number;
-    selDetailLabelSize: number;
-    selDetailValueSize: number;
-    selDetailIconSize: number;
-    selScorecardLabelSize: number;
-    selScorecardValueSize: number;
-    selScorecardBarHeight: number;
-    selBannerTitleColor: string;
-    selBannerDescColor: string;
-    selBannerLabelColor: string;
-    selBannerIconStroke: string;
-    selDetailLabelColor: string;
-    selDetailValueColor: string;
-    selDetailSectionTitleColor: string;
-    selDetailIconStroke: string;
-    selScorecardTitleColor: string;
-    selScorecardIconStroke: string;
-    selScorecardAvgColor: string;
-    /** Selected product — vertical gap between banner / details / scorecard */
-    selSectionGap: number;
-    selHeroRadius: number;
-    selHeroPadding: number;
-    selHeroDecorOpacity: number;
-    selCardRadius: number;
-    selCardShadow: boolean;
-    selCardBodyPadding: number;
-    selCardHeaderPadX: number;
-    selCardHeaderPadY: number;
-    /** Layer-color tint strength (%) for borders and tinted surfaces */
-    selTintCardBorder: number;
-    selTintHeaderBg: number;
-    selTintHeaderRule: number;
-    selTintRowRule: number;
-    selTintIconBg: number;
-    selScorecardBodyPadding: number;
-    selScorecardGridGap: number;
-    /** Selected product — card shell (defaults match overview sel cards) */
-    selWidgetBg: string;
-    selWidgetBorder: string;
-    /** Layer tab icon box (no selection) */
-    nsTabIconWrap: number;
-    nsTabIconSvg: number;
-  };
-  qualityPanel: {
-    widgetBg: string;
-    widgetBorder: string;
-    widgetRadius: number;
-    sectionGap: number;
-    titleSize: number;
-    subtitleSize: number;
-    headerTextColor: string;
-    headerSubColor: string;
-    radarSize: number;
-    radarFillOpacity: number;
-    radarStrokeWidth: number;
-    radarGridColor: string;
-    radarLabelSize: number;
-    radarValueSize: number;
-    radarDotRadius: number;
-    radarCenterScoreSize: number;
-    radarCenterLabelSize: number;
-    radarLabelColor: string;
-    radarAxisWidth: number;
-    radarLabelGap: number;
-    radarLabelOffset: number;
-    /** Extra radial distance (px) for the Consistency vertex label to clear the chart */
-    radarConsistencyLabelOutset: number;
-    starMeaningSize: number;
-    qualityHighColor: string;
-    qualityMidColor: string;
-    qualityLowColor: string;
-    dimBarHeight: number;
-    dimLabelSize: number;
-    dimValueSize: number;
-    dimDescSize: number;
-    dimIconColor: string;
-    inspectTextSize: number;
-    starSize: number;
-    starScoreSize: number;
-    layerPillSize: number;
-    cardBg: string;
-    cardBorder: string;
-    cardRadius: number;
-    methodTextSize: number;
-    methodTextColor: string;
-    iconSize: number;
-    promptTextSize: number;
-    insightsMaxHeight: number;
-    insightsBg: string;
-    insightsBorder: string;
-    insightsPassingBg: string;
-    insightsAttentionBg: string;
-    selHeaderTitleColor: string;
-    selHeaderSubtitleColor: string;
-    selProductBarTextColor: string;
-    selInsightsTitleColor: string;
-    selInsightsHintColor: string;
-    selInsightsPassingHeaderColor: string;
-    selInsightsAttentionHeaderColor: string;
-    selInsightsStrongDimLabelColor: string;
-    selClearLinkColor: string;
-    /** Selected product — radar widget shell */
-    selWidgetBg: string;
-    selWidgetBorder: string;
-    /** “Data Quality” title inside radar box (selected product) */
-    selRadarHeaderSize: number;
-    /** Vertical gap between blocks when a product is selected */
-    selSectionGap: number;
-    /** Insights drill-down overlay typography */
-    drillTitleSize: number;
-    drillDescSize: number;
-    drillCloseSize: number;
-    drillKpiValueSize: number;
-    drillKpiLabelSize: number;
-    drillSectionHeaderSize: number;
-    drillFailureNameSize: number;
-    drillFailureIssueSize: number;
-    drillEmptyStateSize: number;
-    /** No product selected — explainer + search */
-    nsEmptyHeadingSize: number;
-    nsEmptyHeadingColor: string;
-    nsEmptyBodySize: number;
-    nsEmptyRadarLegendSize: number;
-    nsEmptySearchSize: number;
-  };
-  pipelinePanel: {
-    widgetBg: string;
-    widgetBorder: string;
-    widgetRadius: number;
-    sectionGap: number;
-    titleSize: number;
-    subtitleSize: number;
-    headerTextColor: string;
-    headerSubColor: string;
-    tabHeight: number;
-    tabRadius: number;
-    tabFontSize: number;
-    tabActiveTextColor: string;
-    tabInactiveTextColor: string;
-    tabIconSize: number;
-    tabCountSize: number;
-    cardBg: string;
-    cardBorder: string;
-    cardRadius: number;
-    kpiFontSize: number;
-    kpiLabelSize: number;
-    prodNameSize: number;
-    prodMetaSize: number;
-    statusDotSize: number;
-    statusBadgeSize: number;
-    modelNameSize: number;
-    tableHeaderSize: number;
-    tableDataSize: number;
-    sectionHeaderSize: number;
-    logSeveritySize: number;
-    logMessageSize: number;
-    logTimeSize: number;
-    logBadgeSize: number;
-    logIconSize: number;
-    logSevBadgeSize: number;
-    archLabelSize: number;
-    archSubSize: number;
-    archMaxInputs: number;
-    banDescSize: number;
-    searchBg: string;
-    searchBorder: string;
-    searchFontSize: number;
-    /** Product selected — outer widget / lineage boxes / models table */
-    selWidgetBg: string;
-    selWidgetBorder: string;
-    selBoxBg: string;
-    selBoxBorder: string;
-    selTableBg: string;
-    selTableHeaderBg: string;
-    selTableBorder: string;
-    /** Selected product — models table / logs list max height */
-    selModelTableMaxHeight: number;
-    selLogMaxHeight: number;
-    /** Vertical gap when a product is focused */
-    selSectionGap: number;
-    /** Upstream / Downstream section titles (selected product) */
-    selLineageTitleSize: number;
-    selLineageTitleColor: string;
-    selLineageChevronColor: string;
-    /** No product selected — BAN tab row */
-    nsBanTabFontSize: number;
-  };
-}
-
-const APP_CATEGORIES = ["SaaS", "Database", "API", "Streaming"] as const;
-
-const DEFAULTS: PlaygroundConfig = {
-  layout: "arc",
-  layerColors: { APPS: "#0f2e33", SOURCE_ALIGNED: "#3d9b8f", BUSINESS: "#c5a800", CONSUMER_ALIGNED: "#d96028" },
-  appTypeColors: { SaaS: "#f5a882", Database: "#5bbead", API: "#5b9bd5", Streaming: "#8fcd73" },
-  green: "#8fcd73",
-  red: "#ef4444",
-  text: "#1a1a1a",
-  bg: "#ffffff",
-  radii: { APPS: 140, SOURCE_ALIGNED: 275, BUSINESS: 400, CONSUMER_ALIGNED: 520 },
-  bubbleR: { SOURCE_ALIGNED: 12, BUSINESS: 9, CONSUMER_ALIGNED: 12 },
-  appDotR: 3,
-  cx: 600,
-  cy: 780,
-  pad: 0.12,
-  vw: 1200,
-  vh: 800,
-  bizBubbleScale: 1,
-  conBubbleScale: 1,
-  innerDotR: 3.5,
-  bubbleGap: 4,
-  equalSpread: false,
-  bubbleSizeMode: "uniform",
-  uniformSrcR: 14,
-  uniformBizR: 18,
-  uniformConR: 20,
-  domainColors: {},
-  domainBubbleOpacity: 0.10,
-  groupBubbleOpacity: 0.20,
-  outerBubbleOpacity: { SOURCE_ALIGNED: 0.15, BUSINESS: 0.15, CONSUMER_ALIGNED: 0.15 },
-  labelSize: 8,
-  domainNameSize: 8.5,
-  legendSize: 9,
-  labelOpacity: 0.5,
-  labelWeight: 700,
-  prodLabel: {
-    srcSize: 5, bizSize: 6, conSize: 7, offset: 4, staggerGap: 16, opacity: 0.55, rotation: 0,
-    srcOffset: 10, bizOffset: 12, conOffset: 14,
-    srcAngle: 0, bizAngle: 0, conAngle: 0,
-    xOffset: 0, yOffset: 0,
-    perProduct: {},
-  },
-  show: { productLabels: true, layerLabels: true, domainNames: true, domainLegend: true, appTypeLegend: true, dataFlowArrow: true, separators: true, arcBands: true, flowAnimation: true, searchBar: true, smartLabels: true, productAnatomyLegend: true, dataFlowLegend: true, bubbleSizeLegend: true },
-  animationPaused: false,
-  domainLabelPos: {},
-  layerLabelPos: {},
-  legendPos: { domain: { x: 0, y: 0 }, appType: { x: 0, y: 0 }, dataFlow: { x: 0, y: 0 }, productAnatomy: { x: 0, y: 0 }, bubbleSize: { x: 0, y: 0 } },
-  legendUi: {
-    domainTitleSize: 6.5, domainTitleColor: "", domainTitleOpacity: 0.3, domainDividerOpacity: 0.12,
-    domainNameSize: 5.5, domainNameColor: "", domainNameOpacity: 0.45, domainNameOpacityHover: 0.9,
-    appTypeTitleSize: 6.5, appTypeTitleColor: "", appTypeTitleOpacity: 0.3, appTypeDividerOpacity: 0.12, appTypeRowSize: 7, appTypeRowColor: "", appTypeRowOpacity: 0.5,
-    dataFlowTitleSize: 6.5, dataFlowTitleColor: "", dataFlowTitleOpacity: 0.3, dataFlowDividerOpacity: 0.12, dataFlowLineLabelSize: 6.5, dataFlowLineLabelColor: "", dataFlowLineLabelOpacity: 0.45,
-    anatomyTitleSize: 6.5, anatomyTitleColor: "", anatomyTitleOpacity: 0.3, anatomyDividerOpacity: 0.12, anatomyRowTitleSize: 6.5, anatomyRowTitleColor: "", anatomyRowTitleOpacity: 0.5,
-    bubbleTitleSize: 6.5, bubbleSubtitleSize: 5.25, bubbleTitleColor: "", bubbleSubtitleColor: "", bubbleTitleOpacity: 0.35, bubbleSubtitleOpacity: 0.32, bubbleSampleSmallR: 5, bubbleSampleLargeR: 11,
-    dataFlowArrowOpacity: 1, dataFlowArrowStrokeWidth: 1.5,
-  },
-  arrowPos: { x: 0, y: 0 },
-  legendScale: 1,
-  appCategoryShapes: { SaaS: "circle" as const, Database: "hexagon" as const, API: "square" as const, Streaming: "diamond" as const },
-  customTexts: [],
-  typoOffset: { layerX: 0, layerY: 0, domainX: 0, domainY: 0, legendX: 0, legendY: 0 },
-  separator: { color: "#1a1a1a", opacity: 0.08, width: 0.5, dash: 4 },
-  arcBand: { opacity: 0.08, width: 30 },
-  flow: {
-    width: 0.8, opacity: 0.08, highlightWidth: 2.5, curveTension: 0.5,
-    idleStyle: "glow" as const, idleSpeed: 4,
-    anchor: {
-      upstream: { APPS: 1, SOURCE_ALIGNED: 1, BUSINESS: 1, CONSUMER_ALIGNED: 1 },
-      downstream: { APPS: 1, SOURCE_ALIGNED: 0, BUSINESS: 0, CONSUMER_ALIGNED: 0 },
-    },
-    noodle: {
-      appSourceCorridor: 0.55,
-      appSourceSpread: 0.33,
-      sourceBusinessCorridor: 0.58,
-      sameLayerGapFactor: 0.8,
-      sameLayerBase: 14,
-      sameLayerScale: 28,
-      sameLayerNearSpread: 0.28,
-      sameLayerFarSpread: 0.18,
-      businessBusinessLiftBase: 36,
-      businessBusinessLiftScale: 62,
-      businessBusinessLiftMax: 150,
-      businessBusinessNearSpread: 0.24,
-      businessBusinessFarSpread: 0.16,
-      farSpanThreshold: 1.2,
-      businessConsumerLiftBase: 28,
-      businessConsumerLiftScale: 52,
-      businessConsumerLiftMax: 115,
-      businessConsumerNearSpread: 0.22,
-      businessConsumerFarSpread: 0.16,
-    },
-  },
-  arrowX: 42,
-  arrowY: 0,
-  arrowRotation: 0,
-  arrowLength: 1,
-  legendText: {
-    appTitle: "APP CATEGORIES",
-    domainTitle: "DOMAINS",
-    dataFlowTitle: "DATA FLOW",
-    dataFlowArrowLabel: "DATA FLOW",
-    productLayersTitle: "PRODUCT LAYERS",
-    bubbleSizeTitle: "BUBBLE SIZE",
-    bubbleSizeSubtitle: "",
-    anatomyRows: {},
-    pipelineHealthy: "Healthy lineage",
-    pipelineBroken: "Broken / degraded",
-    appTypeLabels: { SaaS: "SaaS", Database: "Database", API: "API", Streaming: "Streaming" },
-  },
-  customSeparators: [],
-  panelBg: "#ffffff",
-  panelGradient: { enabled: false, type: "linear" as const, color1: "#ffffff", color2: "#faf5ef", color3: "#f5f0eb", midStop: 50, angle: 180, opacity: 100 },
-  paneBorder: { color: "#d1d5db", width: 1.5, radius: 12, padTop: 6, padBottom: 6, padSide: 6 },
-  sortMode: "custom",
-  arrowColor: "#000000",
-  panelSync: { sourcePanel: "catalogue", includeWidgetShell: false },
-  costPanel: {
-    widgetBg: "#fafaf9",
-    widgetBorder: "#e7e5e4",
-    widgetRadius: 14,
-    sectionGap: 14,
-    titleSize: 15,
-    banSize: 22,
-    labelSize: 9,
-    tabSize: 7.5,
-    barHeight: 5,
-    chartHeight: 120,
-    chartPadLeft: 46,
-    chartPadBottom: 22,
-    chartPadTop: 8,
-    chartPadRight: 8,
-    lineWidth: 2,
-    dotRadius: 2.5,
-    dotFill: "#ffffff",
-    dotStrokeWidth: 1.2,
-    mutedColor: "#a8a29e",
-    posColor: "#22c55e",
-    negColor: "#ef4444",
-    chartLineColor: "",
-    chartAreaColor: "",
-    chartAreaOpacity: 0.15,
-    chartGridColor: "#e5e7eb",
-    chartGridWidth: 0.5,
-    chartAxisFontSize: 7.5,
-    chartAxisColor: "#78716c",
-    chartMonthFontSize: 7.5,
-    chartMonthColor: "#78716c",
-    chartDotStrokeColor: "",
-    tableFontSize: 7.5,
-    tableMaxHeight: 160,
-    tableHeaderBg: "#f5f5f4",
-    tableHeaderColor: "#a8a29e",
-    catIngestionColor: "#d97706",
-    catProcessingColor: "#22c55e",
-    catOrchestrationColor: "#ef4444",
-    catStorageColor: "#6b7280",
-    selTitleSize: 15,
-    selBanSize: 22,
-    selLabelSize: 9,
-    selMutedColor: "#a8a29e",
-    selBarHeight: 5,
-    selCatLabelSize: 9,
-    selTrendTabSize: 7,
-    selAppNameSize: 10,
-    selAppCostSize: 9,
-    selChartGridColor: "#e5e7eb",
-    selChartAxisColor: "#78716c",
-    selChartMonthColor: "#78716c",
-    selChartLineColor: "",
-    selChartAreaOpacity: 0.18,
-    selChartLineWidth: 2,
-    selChartDotRadius: 2.5,
-    selChartAxisFontSize: 6,
-    selChartMonthFontSize: 6.5,
-    selChartWidth: 360,
-    selChartHeight: 100,
-    selChartPadLeft: 36,
-    selChartPadRight: 0,
-    selChartPadTop: 0,
-    selChartPadBottom: 18,
-    selChartGridLineWidth: 0.5,
-    selChartDotStrokeWidth: 1.2,
-    selChartDotFill: "#ffffff",
-    selTitleColor: "",
-    selMutedOverride: "",
-    nsPageTitleColor: "",
-    nsCaptionSize: 7,
-    nsVsLabelSize: 7,
-    nsDeltaSize: 8,
-    nsTrendTotalSize: 17,
-    nsTrendYearSize: 9,
-    nsTableDomainSize: 6,
-    nsSortBtnSize: 7,
-    selWidgetBg: "#ffffff",
-    selWidgetBorder: "#e7e5e4",
-    selSectionGap: 14,
-  },
-  overviewPanel: {
-    typeBubbleSize: 80,
-    typeAppDotR: 4.5,
-    domainBubbleSize: 58,
-    domainAppDotR: 3.5,
-    productDotR: 4,
-    dotActiveOpacity: 0.6,
-    dotSpacing: 2.4,
-    cardBg: "#fafaf9",
-    cardBorder: "#e7e5e4",
-    cardRadius: 14,
-    cardShadow: true,
-    sectionGap: 18,
-    titleSize: 10,
-    banSize: 24,
-    labelSize: 7,
-    gaugeSize: 88,
-    barHeight: 5,
-    tabBg: "#1a1a1a",
-    tabTextColor: "#ffffff",
-    tabInactiveColor: "#a8a29e",
-    tabFontSize: 8,
-    domainOutlineWidth: 1,
-    domainFillOpacity: 0.04,
-    domainCircleGap: 10,
-    domainLabelColor: "#a8a29e",
-    domainLabelSize: 6.5,
-    countSize: 13,
-    kpiIconBgOpacity: 0.12,
-    kpiNumberColor: "#1a1a1a",
-    kpiLabelColor: "#a8a29e",
-    selBannerNameSize: 14,
-    selBannerDescSize: 9,
-    selBannerLabelSize: 7,
-    selKpiValueSize: 16,
-    selKpiLabelSize: 7,
-    selSectionHeaderSize: 9,
-    selItemNameSize: 9.5,
-    selItemDotSize: 6,
-    selLayerLabelSize: 7.5,
-    selCardRadius: 12,
-    selCardBg: "#ffffff",
-    selCardBorder: "#e7e5e4",
-    selSectionGap: 10,
-    selStarSize: 11,
-    selDomainSize: 9,
-    selBannerOverlineColor: "rgba(255,255,255,0.5)",
-    selBannerTitleColor: "#ffffff",
-    selBannerDescColor: "rgba(255,255,255,0.65)",
-    selBannerPillTextColor: "#ffffff",
-    selBannerDomainTextColor: "rgba(255,255,255,0.85)",
-    selKpiQualityValueColor: "",
-    selKpiQualityLabelColor: "",
-    selKpiRatingValueColor: "",
-    selKpiRatingLabelColor: "",
-    selKpiSlaValueColor: "",
-    selKpiSlaLabelColor: "",
-    selLineageSectionTitleColor: "",
-    selLineageItemTextColor: "",
-    selClearLinkColor: "#9ca3af",
-    nsPageTitleSize: 17,
-    nsPageSubtitleSize: 11,
-    nsPageTitleColor: "",
-    nsPageSubtitleColor: "",
-    nsEntitiesTitleSize: 13,
-    nsEntitiesSubtitleSize: 10,
-    nsEntitiesTitleColor: "",
-    nsEntitiesSubtitleColor: "",
-    nsKpiIconBox: 36,
-    nsKpiIconSvg: 18,
-  },
-  cataloguePanel: {
-    widgetBg: "#fafaf9",
-    widgetBorder: "#e7e5e4",
-    widgetRadius: 12,
-    sectionGap: 10,
-    titleSize: 15,
-    subtitleSize: 10,
-    headerTextColor: "#1a1a1a",
-    headerSubColor: "#a8a29e",
-    tabHeight: 34,
-    tabRadius: 8,
-    tabActiveTextColor: "#ffffff",
-    tabInactiveTextColor: "#78716c",
-    tabFontSize: 8.5,
-    gridCols: 2,
-    gridGap: 8,
-    listMaxHeight: 400,
-    cardBg: "#ffffff",
-    cardBorder: "#e7e5e4",
-    cardRadius: 10,
-    cardShadow: false,
-    cardHoverBg: "#f5f5f4",
-    bannerHeight: 6,
-    cardNameSize: 9.5,
-    cardNameColor: "#1a1a1a",
-    cardDescSize: 7.5,
-    descColor: "#78716c",
-    cardMetaSize: 7,
-    metaColor: "#a8a29e",
-    tagBg: "#f5f5f4",
-    tagColor: "#78716c",
-    tagFontSize: 6.5,
-    tabCountSize: 8,
-    showBanner: true,
-    searchBg: "#ffffff",
-    searchBorder: "#e7e5e4",
-    searchTextColor: "#1a1a1a",
-    searchPlaceholderColor: "#a8a29e",
-    searchFontSize: 9,
-    searchRadius: 8,
-    searchHeight: 28,
-    tagRadius: 4,
-    starSize: 8,
-    domainDotSize: 5,
-    separatorColor: "#e7e5e4",
-    infoIconSize: 22,
-    infoIconBg: "#e7e5e4",
-    infoIconActiveBg: "#1a1a1a",
-    infoIconColor: "#78716c",
-    infoIconActiveColor: "#ffffff",
-    rubricWidth: 220,
-    rubricTitleSize: 8,
-    rubricStarSize: 7,
-    rubricLabelSize: 8,
-    rubricDescSize: 7.5,
-    selBannerNameSize: 15,
-    selBannerDescSize: 9,
-    selBannerLabelSize: 8,
-    selStarSize: 12,
-    selDetailLabelSize: 8,
-    selDetailValueSize: 9.5,
-    selDetailIconSize: 10,
-    selScorecardLabelSize: 8,
-    selScorecardValueSize: 8,
-    selScorecardBarHeight: 4,
-    selBannerTitleColor: "#ffffff",
-    selBannerDescColor: "rgba(255,255,255,0.7)",
-    selBannerLabelColor: "rgba(255,255,255,0.6)",
-    selBannerIconStroke: "rgba(255,255,255,0.95)",
-    selDetailLabelColor: "",
-    selDetailValueColor: "",
-    selDetailSectionTitleColor: "",
-    selDetailIconStroke: "#000000",
-    selScorecardTitleColor: "",
-    selScorecardIconStroke: "#000000",
-    selScorecardAvgColor: "",
-    selSectionGap: 10,
-    selHeroRadius: 12,
-    selHeroPadding: 16,
-    selHeroDecorOpacity: 20,
-    selCardRadius: 12,
-    selCardShadow: false,
-    selCardBodyPadding: 12,
-    selCardHeaderPadX: 12,
-    selCardHeaderPadY: 8,
-    selTintCardBorder: 9.5,
-    selTintHeaderBg: 3,
-    selTintHeaderRule: 7,
-    selTintRowRule: 3,
-    selTintIconBg: 4.7,
-    selScorecardBodyPadding: 10,
-    selScorecardGridGap: 6,
-    selWidgetBg: "#ffffff",
-    selWidgetBorder: "#e7e5e4",
-    nsTabIconWrap: 22,
-    nsTabIconSvg: 12,
-  },
-  qualityPanel: {
-    widgetBg: "#ffffff",
-    widgetBorder: "#e7e5e4",
-    widgetRadius: 12,
-    sectionGap: 12,
-    titleSize: 15,
-    subtitleSize: 10,
-    headerTextColor: "#1a1a1a",
-    headerSubColor: "#78716c",
-    radarSize: 210,
-    radarFillOpacity: 0.18,
-    radarStrokeWidth: 1.5,
-    radarGridColor: "#e5e7eb",
-    radarLabelSize: 6.5,
-    radarValueSize: 7,
-    radarDotRadius: 3,
-    radarCenterScoreSize: 16,
-    radarCenterLabelSize: 8,
-    radarLabelColor: "#6b7280",
-    radarAxisWidth: 0.5,
-    radarLabelGap: 9,
-    radarLabelOffset: 22,
-    radarConsistencyLabelOutset: 8,
-    starMeaningSize: 8,
-    qualityHighColor: "#8fcd73",
-    qualityMidColor: "#dab508",
-    qualityLowColor: "#ef4444",
-    dimBarHeight: 6,
-    dimLabelSize: 10,
-    dimValueSize: 11,
-    dimDescSize: 9,
-    dimIconColor: "#8fcd73",
-    inspectTextSize: 7,
-    starSize: 13,
-    starScoreSize: 11,
-    layerPillSize: 8,
-    cardBg: "#fafaf9",
-    cardBorder: "#f5f5f4",
-    cardRadius: 12,
-    methodTextSize: 9,
-    methodTextColor: "#78716c",
-    iconSize: 14,
-    promptTextSize: 10,
-    insightsMaxHeight: 280,
-    insightsBg: "#ffffff",
-    insightsBorder: "#e7e5e4",
-    insightsPassingBg: "#8fcd7308",
-    insightsAttentionBg: "#ef444408",
-    selHeaderTitleColor: "",
-    selHeaderSubtitleColor: "",
-    selProductBarTextColor: "",
-    selInsightsTitleColor: "",
-    selInsightsHintColor: "",
-    selInsightsPassingHeaderColor: "",
-    selInsightsAttentionHeaderColor: "",
-    selInsightsStrongDimLabelColor: "",
-    selClearLinkColor: "#9ca3af",
-    selWidgetBg: "#ffffff",
-    selWidgetBorder: "#e7e5e4",
-    selRadarHeaderSize: 11,
-    selSectionGap: 8,
-    drillTitleSize: 13,
-    drillDescSize: 10,
-    drillCloseSize: 10,
-    drillKpiValueSize: 16,
-    drillKpiLabelSize: 7,
-    drillSectionHeaderSize: 10,
-    drillFailureNameSize: 10,
-    drillFailureIssueSize: 9,
-    drillEmptyStateSize: 10,
-    nsEmptyHeadingSize: 0,
-    nsEmptyHeadingColor: "",
-    nsEmptyBodySize: 0,
-    nsEmptyRadarLegendSize: 0,
-    nsEmptySearchSize: 0,
-  },
-  pipelinePanel: {
-    widgetBg: "#ffffff",
-    widgetBorder: "#e7e5e4",
-    widgetRadius: 12,
-    sectionGap: 12,
-    titleSize: 15,
-    subtitleSize: 10,
-    headerTextColor: "#1a1a1a",
-    headerSubColor: "#78716c",
-    tabHeight: 38,
-    tabRadius: 10,
-    tabFontSize: 7,
-    tabActiveTextColor: "#1a1a1a",
-    tabInactiveTextColor: "#a8a29e",
-    tabIconSize: 22,
-    tabCountSize: 8,
-    cardBg: "#fafaf9",
-    cardBorder: "#f5f5f4",
-    cardRadius: 10,
-    kpiFontSize: 16,
-    kpiLabelSize: 6,
-    prodNameSize: 9,
-    prodMetaSize: 6,
-    statusDotSize: 5,
-    statusBadgeSize: 5.5,
-    modelNameSize: 7.5,
-    tableHeaderSize: 6,
-    tableDataSize: 7,
-    sectionHeaderSize: 8,
-    logSeveritySize: 7,
-    logMessageSize: 9,
-    logTimeSize: 7,
-    logBadgeSize: 8,
-    logIconSize: 20,
-    logSevBadgeSize: 6,
-    archLabelSize: 9,
-    archSubSize: 6,
-    archMaxInputs: 4,
-    banDescSize: 6,
-    searchBg: "#fafaf9",
-    searchBorder: "#e7e5e4",
-    searchFontSize: 9,
-    selWidgetBg: "#ffffff",
-    selWidgetBorder: "#e7e5e4",
-    selBoxBg: "#ffffff",
-    selBoxBorder: "#e7e5e4",
-    selTableBg: "#ffffff",
-    selTableHeaderBg: "#f5f5f4",
-    selTableBorder: "#e7e5e4",
-    selModelTableMaxHeight: 160,
-    selLogMaxHeight: 200,
-    selSectionGap: 10,
-    selLineageTitleSize: 7,
-    selLineageTitleColor: "#000000",
-    selLineageChevronColor: "#525252",
-    nsBanTabFontSize: 0,
-  },
-};
-
-const LS_KEY_ARC = "meshatlas-pg-arc";
-const LS_KEY_GLOBAL_BG = "meshatlas-global-bg";
-const LS_KEY_THEMES = "meshatlas-color-themes";
-const LS_KEY_ACTIVE_THEME = "meshatlas-active-theme";
-
-type ColorTheme = {
-  id: string;
-  name: string;
-  builtIn?: boolean;
-  colors: {
-    layerColors: Record<string, string>;
-    appTypeColors: Record<string, string>;
-    green: string;
-    red: string;
-    text: string;
-    bg: string;
-    domainColors: Record<string, string>;
-    panelBg: string;
-    panelGradient: { enabled: boolean; type: "linear" | "radial"; color1: string; color2: string; color3: string; midStop: number; angle: number; opacity: number };
-    arrowColor: string;
-    separator: { color: string };
-    paneBorder: { color: string };
-    costPanel: { widgetBg: string; widgetBorder: string; dotFill: string; mutedColor: string; posColor: string; negColor: string; chartLineColor: string; chartAreaColor: string; chartGridColor: string; chartAxisColor: string; chartMonthColor: string; chartDotStrokeColor: string; tableHeaderBg: string; tableHeaderColor: string; catIngestionColor: string; catProcessingColor: string; catOrchestrationColor: string; catStorageColor: string };
-    overviewPanel: { cardBg: string; cardBorder: string; tabBg: string; tabTextColor: string; tabInactiveColor: string; domainLabelColor: string; kpiNumberColor: string; kpiLabelColor: string };
-    cataloguePanel: { widgetBg: string; widgetBorder: string; headerTextColor: string; headerSubColor: string; tabActiveTextColor: string; tabInactiveTextColor: string; cardBg: string; cardBorder: string; cardHoverBg: string; cardNameColor: string; descColor: string; metaColor: string; tagBg: string; tagColor: string; searchBg: string; searchBorder: string; searchTextColor: string; searchPlaceholderColor: string; separatorColor: string; infoIconBg: string; infoIconActiveBg: string; infoIconColor: string; infoIconActiveColor: string };
-    qualityPanel: { widgetBg: string; widgetBorder: string; headerTextColor: string; headerSubColor: string; radarGridColor: string; radarLabelColor: string; qualityHighColor: string; qualityMidColor: string; qualityLowColor: string; dimIconColor: string; cardBg: string; cardBorder: string; methodTextColor: string; insightsBg: string; insightsBorder: string; insightsPassingBg: string; insightsAttentionBg: string };
-    pipelinePanel: { widgetBg: string; widgetBorder: string; headerTextColor: string; headerSubColor: string; tabActiveTextColor: string; tabInactiveTextColor: string; cardBg: string; cardBorder: string; searchBg: string; searchBorder: string };
-  };
-};
-
-function extractColorsFromCfg(cfg: PlaygroundConfig): ColorTheme["colors"] {
-  return {
-    layerColors: { ...cfg.layerColors },
-    appTypeColors: { ...cfg.appTypeColors },
-    green: cfg.green, red: cfg.red, text: cfg.text, bg: cfg.bg,
-    domainColors: { ...cfg.domainColors },
-    panelBg: cfg.panelBg, panelGradient: { ...cfg.panelGradient }, arrowColor: cfg.arrowColor,
-    separator: { color: cfg.separator.color },
-    paneBorder: { color: cfg.paneBorder.color },
-    costPanel: { widgetBg: cfg.costPanel.widgetBg, widgetBorder: cfg.costPanel.widgetBorder, dotFill: cfg.costPanel.dotFill, mutedColor: cfg.costPanel.mutedColor, posColor: cfg.costPanel.posColor, negColor: cfg.costPanel.negColor, chartLineColor: cfg.costPanel.chartLineColor, chartAreaColor: cfg.costPanel.chartAreaColor, chartGridColor: cfg.costPanel.chartGridColor, chartAxisColor: cfg.costPanel.chartAxisColor, chartMonthColor: cfg.costPanel.chartMonthColor, chartDotStrokeColor: cfg.costPanel.chartDotStrokeColor, tableHeaderBg: cfg.costPanel.tableHeaderBg, tableHeaderColor: cfg.costPanel.tableHeaderColor, catIngestionColor: cfg.costPanel.catIngestionColor, catProcessingColor: cfg.costPanel.catProcessingColor, catOrchestrationColor: cfg.costPanel.catOrchestrationColor, catStorageColor: cfg.costPanel.catStorageColor },
-    overviewPanel: { cardBg: cfg.overviewPanel.cardBg, cardBorder: cfg.overviewPanel.cardBorder, tabBg: cfg.overviewPanel.tabBg, tabTextColor: cfg.overviewPanel.tabTextColor, tabInactiveColor: cfg.overviewPanel.tabInactiveColor, domainLabelColor: cfg.overviewPanel.domainLabelColor, kpiNumberColor: cfg.overviewPanel.kpiNumberColor, kpiLabelColor: cfg.overviewPanel.kpiLabelColor },
-    cataloguePanel: { widgetBg: cfg.cataloguePanel.widgetBg, widgetBorder: cfg.cataloguePanel.widgetBorder, headerTextColor: cfg.cataloguePanel.headerTextColor, headerSubColor: cfg.cataloguePanel.headerSubColor, tabActiveTextColor: cfg.cataloguePanel.tabActiveTextColor, tabInactiveTextColor: cfg.cataloguePanel.tabInactiveTextColor, cardBg: cfg.cataloguePanel.cardBg, cardBorder: cfg.cataloguePanel.cardBorder, cardHoverBg: cfg.cataloguePanel.cardHoverBg, cardNameColor: cfg.cataloguePanel.cardNameColor, descColor: cfg.cataloguePanel.descColor, metaColor: cfg.cataloguePanel.metaColor, tagBg: cfg.cataloguePanel.tagBg, tagColor: cfg.cataloguePanel.tagColor, searchBg: cfg.cataloguePanel.searchBg, searchBorder: cfg.cataloguePanel.searchBorder, searchTextColor: cfg.cataloguePanel.searchTextColor, searchPlaceholderColor: cfg.cataloguePanel.searchPlaceholderColor, separatorColor: cfg.cataloguePanel.separatorColor, infoIconBg: cfg.cataloguePanel.infoIconBg, infoIconActiveBg: cfg.cataloguePanel.infoIconActiveBg, infoIconColor: cfg.cataloguePanel.infoIconColor, infoIconActiveColor: cfg.cataloguePanel.infoIconActiveColor },
-    qualityPanel: { widgetBg: cfg.qualityPanel.widgetBg, widgetBorder: cfg.qualityPanel.widgetBorder, headerTextColor: cfg.qualityPanel.headerTextColor, headerSubColor: cfg.qualityPanel.headerSubColor, radarGridColor: cfg.qualityPanel.radarGridColor, radarLabelColor: cfg.qualityPanel.radarLabelColor, qualityHighColor: cfg.qualityPanel.qualityHighColor, qualityMidColor: cfg.qualityPanel.qualityMidColor, qualityLowColor: cfg.qualityPanel.qualityLowColor, dimIconColor: cfg.qualityPanel.dimIconColor, cardBg: cfg.qualityPanel.cardBg, cardBorder: cfg.qualityPanel.cardBorder, methodTextColor: cfg.qualityPanel.methodTextColor, insightsBg: cfg.qualityPanel.insightsBg, insightsBorder: cfg.qualityPanel.insightsBorder, insightsPassingBg: cfg.qualityPanel.insightsPassingBg, insightsAttentionBg: cfg.qualityPanel.insightsAttentionBg },
-    pipelinePanel: { widgetBg: cfg.pipelinePanel.widgetBg, widgetBorder: cfg.pipelinePanel.widgetBorder, headerTextColor: cfg.pipelinePanel.headerTextColor, headerSubColor: cfg.pipelinePanel.headerSubColor, tabActiveTextColor: cfg.pipelinePanel.tabActiveTextColor, tabInactiveTextColor: cfg.pipelinePanel.tabInactiveTextColor, cardBg: cfg.pipelinePanel.cardBg, cardBorder: cfg.pipelinePanel.cardBorder, searchBg: cfg.pipelinePanel.searchBg, searchBorder: cfg.pipelinePanel.searchBorder },
-  };
-}
-
-function applyThemeColors(cfg: PlaygroundConfig, colors: ColorTheme["colors"]): PlaygroundConfig {
-  const next = JSON.parse(JSON.stringify(cfg)) as PlaygroundConfig;
-  next.layerColors = { ...next.layerColors, ...colors.layerColors };
-  next.appTypeColors = { ...next.appTypeColors, ...colors.appTypeColors };
-  next.green = colors.green; next.red = colors.red; next.text = colors.text; next.bg = colors.bg;
-  if (Object.keys(colors.domainColors).length > 0) next.domainColors = { ...next.domainColors, ...colors.domainColors };
-  next.panelBg = colors.panelBg; if (colors.panelGradient) next.panelGradient = { ...colors.panelGradient }; next.arrowColor = colors.arrowColor;
-  next.separator = { ...next.separator, color: colors.separator.color };
-  next.paneBorder = { ...next.paneBorder, color: colors.paneBorder.color };
-  Object.assign(next.costPanel, colors.costPanel);
-  Object.assign(next.overviewPanel, colors.overviewPanel);
-  Object.assign(next.cataloguePanel, colors.cataloguePanel);
-  Object.assign(next.qualityPanel, colors.qualityPanel);
-  Object.assign(next.pipelinePanel, colors.pipelinePanel);
-  return next;
-}
-
-const CLASSIC_THEME: ColorTheme = {
-  id: "classic",
-  name: "MeshLens Classic",
-  builtIn: true,
-  colors: {
-    layerColors: { APPS: "#0f2e33", SOURCE_ALIGNED: "#3d9b8f", BUSINESS: "#c5a800", CONSUMER_ALIGNED: "#d96028" },
-    appTypeColors: { SaaS: "#f5a882", Database: "#5bbead", API: "#5b9bd5", Streaming: "#8fcd73" },
-    green: "#8fcd73", red: "#ef4444", text: "#1a1a1a", bg: "#ffffff",
-    domainColors: {},
-    panelBg: "#ffffff", panelGradient: { enabled: false, type: "linear", color1: "#ffffff", color2: "#faf5ef", color3: "#f5f0eb", midStop: 50, angle: 180, opacity: 100 }, arrowColor: "#78716c",
-    separator: { color: "#1a1a1a" },
-    paneBorder: { color: "#d1d5db" },
-    costPanel: { widgetBg: "#fafaf9", widgetBorder: "#e7e5e4", dotFill: "#ffffff", mutedColor: "#a8a29e", posColor: "#22c55e", negColor: "#ef4444", chartLineColor: "", chartAreaColor: "", chartGridColor: "#e5e7eb", chartAxisColor: "#78716c", chartMonthColor: "#78716c", chartDotStrokeColor: "", tableHeaderBg: "#f5f5f4", tableHeaderColor: "#a8a29e", catIngestionColor: "#d97706", catProcessingColor: "#22c55e", catOrchestrationColor: "#ef4444", catStorageColor: "#6b7280" },
-    overviewPanel: { cardBg: "#fafaf9", cardBorder: "#e7e5e4", tabBg: "#1a1a1a", tabTextColor: "#ffffff", tabInactiveColor: "#a8a29e", domainLabelColor: "#a8a29e", kpiNumberColor: "#1a1a1a", kpiLabelColor: "#a8a29e" },
-    cataloguePanel: { widgetBg: "#fafaf9", widgetBorder: "#e7e5e4", headerTextColor: "#1a1a1a", headerSubColor: "#a8a29e", tabActiveTextColor: "#ffffff", tabInactiveTextColor: "#78716c", cardBg: "#ffffff", cardBorder: "#e7e5e4", cardHoverBg: "#f5f5f4", cardNameColor: "#1a1a1a", descColor: "#78716c", metaColor: "#a8a29e", tagBg: "#f5f5f4", tagColor: "#78716c", searchBg: "#ffffff", searchBorder: "#e7e5e4", searchTextColor: "#1a1a1a", searchPlaceholderColor: "#a8a29e", separatorColor: "#e7e5e4", infoIconBg: "#e7e5e4", infoIconActiveBg: "#1a1a1a", infoIconColor: "#78716c", infoIconActiveColor: "#ffffff" },
-    qualityPanel: { widgetBg: "#ffffff", widgetBorder: "#e7e5e4", headerTextColor: "#1a1a1a", headerSubColor: "#78716c", radarGridColor: "#e5e7eb", radarLabelColor: "#6b7280", qualityHighColor: "#8fcd73", qualityMidColor: "#dab508", qualityLowColor: "#ef4444", dimIconColor: "#8fcd73", cardBg: "#fafaf9", cardBorder: "#f5f5f4", methodTextColor: "#78716c", insightsBg: "#ffffff", insightsBorder: "#e7e5e4", insightsPassingBg: "#8fcd7308", insightsAttentionBg: "#ef444408" },
-    pipelinePanel: { widgetBg: "#ffffff", widgetBorder: "#e7e5e4", headerTextColor: "#1a1a1a", headerSubColor: "#78716c", tabActiveTextColor: "#1a1a1a", tabInactiveTextColor: "#a8a29e", cardBg: "#fafaf9", cardBorder: "#e7e5e4", searchBg: "#fafaf9", searchBorder: "#e7e5e4" },
-  },
-};
-
-function loadSavedThemes(): ColorTheme[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(LS_KEY_THEMES);
-    return raw ? JSON.parse(raw) : [];
-  } catch { return []; }
-}
-
-function saveThemesToStorage(themes: ColorTheme[]) {
-  try { localStorage.setItem(LS_KEY_THEMES, JSON.stringify(themes)); } catch {}
-}
-
-function deepMerge(base: any, patch: any): any {
-  if (!patch || typeof patch !== "object") return base;
-  const out = { ...base };
-  for (const k of Object.keys(patch)) {
-    if (typeof base[k] === "object" && typeof patch[k] === "object" && !Array.isArray(base[k])) {
-      out[k] = deepMerge(base[k], patch[k]);
-    } else if (patch[k] !== undefined) {
-      out[k] = patch[k];
-    }
-  }
-  return out;
-}
-
-/** Normalize keys renamed in playground (localStorage may still have legacy fields). */
-function migratePlaygroundConfig(cfg: PlaygroundConfig): void {
-  const cat = cfg.cataloguePanel as PlaygroundConfig["cataloguePanel"] & { selStackGap?: number };
-  if (typeof cat.selStackGap === "number") {
-    cfg.cataloguePanel.selSectionGap = cat.selStackGap;
-    delete cat.selStackGap;
-  }
-  const pipe = cfg.pipelinePanel as PlaygroundConfig["pipelinePanel"] & { modelTableMaxHeight?: number; logMaxHeight?: number };
-  if (typeof pipe.modelTableMaxHeight === "number") {
-    cfg.pipelinePanel.selModelTableMaxHeight = pipe.modelTableMaxHeight;
-    delete pipe.modelTableMaxHeight;
-  }
-  if (typeof pipe.logMaxHeight === "number") {
-    cfg.pipelinePanel.selLogMaxHeight = pipe.logMaxHeight;
-    delete pipe.logMaxHeight;
-  }
-  const luLegacy = cfg.legendUi as PlaygroundConfig["legendUi"] & { anatomyRowDescSize?: unknown; anatomyRowDescColor?: unknown; anatomyRowDescOpacity?: unknown };
-  delete (luLegacy as Record<string, unknown>).anatomyRowDescSize;
-  delete (luLegacy as Record<string, unknown>).anatomyRowDescColor;
-  delete (luLegacy as Record<string, unknown>).anatomyRowDescOpacity;
-  for (const k of Object.keys(cfg.legendText.anatomyRows)) {
-    const row = cfg.legendText.anatomyRows[k as keyof typeof cfg.legendText.anatomyRows];
-    if (row && typeof row === "object" && "desc" in row) delete (row as { desc?: string }).desc;
-  }
-}
-
-type RightPanelSource = "overview" | "cost" | "catalogue" | "quality" | "pipeline";
-
-type RightPanelSyncSnapshot = {
-  titleSize: number;
-  subtitleSize: number;
-  headerTextColor: string;
-  headerSubColor: string;
-  searchFontSize: number;
-  tabFontSize: number;
-  widgetBg: string;
-  widgetBorder: string;
-  widgetRadius: number;
-  sectionGap: number;
-};
-
-function extractRightPanelSyncSnapshot(cfg: PlaygroundConfig, source: RightPanelSource): RightPanelSyncSnapshot {
-  switch (source) {
-    case "overview": {
-      const o = cfg.overviewPanel;
-      return {
-        titleSize: o.nsPageTitleSize,
-        subtitleSize: o.nsPageSubtitleSize,
-        headerTextColor: o.nsPageTitleColor,
-        headerSubColor: o.nsPageSubtitleColor,
-        searchFontSize: o.tabFontSize,
-        tabFontSize: o.tabFontSize,
-        widgetBg: o.cardBg,
-        widgetBorder: o.cardBorder,
-        widgetRadius: o.cardRadius,
-        sectionGap: o.sectionGap,
-      };
-    }
-    case "cost": {
-      const c = cfg.costPanel;
-      return {
-        titleSize: c.titleSize,
-        subtitleSize: c.nsCaptionSize,
-        headerTextColor: c.nsPageTitleColor,
-        headerSubColor: c.mutedColor,
-        searchFontSize: c.tabSize,
-        tabFontSize: c.tabSize,
-        widgetBg: c.widgetBg,
-        widgetBorder: c.widgetBorder,
-        widgetRadius: c.widgetRadius,
-        sectionGap: c.sectionGap,
-      };
-    }
-    case "catalogue": {
-      const p = cfg.cataloguePanel;
-      return {
-        titleSize: p.titleSize,
-        subtitleSize: p.subtitleSize,
-        headerTextColor: p.headerTextColor,
-        headerSubColor: p.headerSubColor,
-        searchFontSize: p.searchFontSize,
-        tabFontSize: p.tabFontSize,
-        widgetBg: p.widgetBg,
-        widgetBorder: p.widgetBorder,
-        widgetRadius: p.widgetRadius,
-        sectionGap: p.sectionGap,
-      };
-    }
-    case "quality": {
-      const p = cfg.qualityPanel;
-      return {
-        titleSize: p.titleSize,
-        subtitleSize: p.subtitleSize,
-        headerTextColor: p.headerTextColor,
-        headerSubColor: p.headerSubColor,
-        searchFontSize: p.nsEmptySearchSize,
-        tabFontSize: p.dimLabelSize,
-        widgetBg: p.widgetBg,
-        widgetBorder: p.widgetBorder,
-        widgetRadius: p.widgetRadius,
-        sectionGap: p.sectionGap,
-      };
-    }
-    case "pipeline": {
-      const p = cfg.pipelinePanel;
-      return {
-        titleSize: p.titleSize,
-        subtitleSize: p.subtitleSize,
-        headerTextColor: p.headerTextColor,
-        headerSubColor: p.headerSubColor,
-        searchFontSize: p.searchFontSize,
-        tabFontSize: p.tabFontSize,
-        widgetBg: p.widgetBg,
-        widgetBorder: p.widgetBorder,
-        widgetRadius: p.widgetRadius,
-        sectionGap: p.sectionGap,
-      };
-    }
-  }
-}
-
-function rightPanelSyncPathsForTarget(target: RightPanelSource, s: RightPanelSyncSnapshot, includeShell: boolean): Record<string, unknown> {
-  const o: Record<string, unknown> = {};
-  if (target === "overview") {
-    o["overviewPanel.nsPageTitleSize"] = s.titleSize;
-    o["overviewPanel.nsPageSubtitleSize"] = s.subtitleSize;
-    o["overviewPanel.nsPageTitleColor"] = s.headerTextColor;
-    o["overviewPanel.nsPageSubtitleColor"] = s.headerSubColor;
-    o["overviewPanel.tabFontSize"] = s.tabFontSize;
-    if (includeShell) {
-      o["overviewPanel.cardBg"] = s.widgetBg;
-      o["overviewPanel.cardBorder"] = s.widgetBorder;
-      o["overviewPanel.cardRadius"] = s.widgetRadius;
-      o["overviewPanel.sectionGap"] = s.sectionGap;
-    }
-    return o;
-  }
-  if (target === "cost") {
-    o["costPanel.titleSize"] = s.titleSize;
-    o["costPanel.nsCaptionSize"] = s.subtitleSize;
-    o["costPanel.nsPageTitleColor"] = s.headerTextColor;
-    o["costPanel.mutedColor"] = s.headerSubColor;
-    o["costPanel.tabSize"] = s.tabFontSize;
-    if (includeShell) {
-      o["costPanel.widgetBg"] = s.widgetBg;
-      o["costPanel.widgetBorder"] = s.widgetBorder;
-      o["costPanel.widgetRadius"] = s.widgetRadius;
-      o["costPanel.sectionGap"] = s.sectionGap;
-    }
-    return o;
-  }
-  const base =
-    target === "catalogue"
-      ? "cataloguePanel"
-      : target === "quality"
-        ? "qualityPanel"
-        : "pipelinePanel";
-  o[`${base}.titleSize`] = s.titleSize;
-  o[`${base}.subtitleSize`] = s.subtitleSize;
-  o[`${base}.headerTextColor`] = s.headerTextColor;
-  o[`${base}.headerSubColor`] = s.headerSubColor;
-  if (target === "catalogue") {
-    o["cataloguePanel.searchFontSize"] = s.searchFontSize;
-    o["cataloguePanel.tabFontSize"] = s.tabFontSize;
-  }
-  if (target === "quality") {
-    o["qualityPanel.nsEmptySearchSize"] = s.searchFontSize;
-    o["qualityPanel.dimLabelSize"] = s.tabFontSize;
-  }
-  if (target === "pipeline") {
-    o["pipelinePanel.searchFontSize"] = s.searchFontSize;
-    o["pipelinePanel.tabFontSize"] = s.tabFontSize;
-    o["pipelinePanel.nsBanTabFontSize"] = s.tabFontSize;
-  }
-  if (includeShell) {
-    o[`${base}.widgetBg`] = s.widgetBg;
-    o[`${base}.widgetBorder`] = s.widgetBorder;
-    o[`${base}.widgetRadius`] = s.widgetRadius;
-    o[`${base}.sectionGap`] = s.sectionGap;
-  }
-  return o;
-}
-
-function buildRightPanelSyncUpdates(cfg: PlaygroundConfig, source: RightPanelSource, includeShell: boolean): Record<string, unknown> {
-  const snap = extractRightPanelSyncSnapshot(cfg, source);
-  const all: RightPanelSource[] = ["overview", "cost", "catalogue", "quality", "pipeline"];
-  const out: Record<string, unknown> = {};
-  for (const t of all) {
-    if (t === source) continue;
-    Object.assign(out, rightPanelSyncPathsForTarget(t, snap, includeShell));
-  }
-  return out;
-}
-
-function usePlayground(storageKey: string): [PlaygroundConfig, (path: string, value: any) => void, () => void, () => void, boolean, (updates: Record<string, unknown>) => void] {
-  const [cfg, setCfg] = useState<PlaygroundConfig>(() => {
-    if (typeof window === "undefined") return DEFAULTS;
-    try {
-      const raw = localStorage.getItem(storageKey);
-      const merged = raw ? deepMerge(DEFAULTS, JSON.parse(raw)) : { ...DEFAULTS };
-      migratePlaygroundConfig(merged);
-      const globalBg = localStorage.getItem(LS_KEY_GLOBAL_BG);
-      if (globalBg) merged.bg = globalBg;
-      return merged;
-    } catch {}
-    return DEFAULTS;
-  });
-  const [canUndo, setCanUndo] = useState(false);
-  const historyRef = useRef<string[]>([]);
-  const lastPushRef = useRef(0);
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(storageKey);
-      historyRef.current = [raw || JSON.stringify(DEFAULTS)];
-    } catch { historyRef.current = [JSON.stringify(DEFAULTS)]; }
-  }, [storageKey]);
-
-  const update = useCallback((path: string, value: any) => {
-    setCfg(prev => {
-      const now = Date.now();
-      if (now - lastPushRef.current > 600) {
-        historyRef.current.push(JSON.stringify(prev));
-        if (historyRef.current.length > 50) historyRef.current.shift();
-        lastPushRef.current = now;
-        setCanUndo(true);
-      }
-      const keys = path.split(".");
-      const next = JSON.parse(JSON.stringify(prev));
-      let obj = next;
-      for (let i = 0; i < keys.length - 1; i++) {
-        const k = keys[i];
-        if (obj[k] == null || typeof obj[k] !== "object") obj[k] = {};
-        obj = obj[k];
-      }
-      obj[keys[keys.length - 1]] = value;
-      try { localStorage.setItem(storageKey, JSON.stringify(next)); } catch {}
-      return next;
-    });
-  }, [storageKey]);
-
-  const undo = useCallback(() => {
-    if (historyRef.current.length <= 0) return;
-    const prev = historyRef.current.pop()!;
-    const restored = deepMerge(DEFAULTS, JSON.parse(prev));
-    migratePlaygroundConfig(restored);
-    setCfg(restored);
-    setCanUndo(historyRef.current.length > 0);
-    try { localStorage.setItem(storageKey, prev); } catch {}
-  }, [storageKey]);
-
-  const reset = useCallback(() => {
-    historyRef.current.push(JSON.stringify(cfg));
-    setCanUndo(true);
-    localStorage.removeItem(storageKey);
-    setCfg(DEFAULTS);
-  }, [storageKey, cfg]);
-
-  const batchUpdate = useCallback(
-    (updates: Record<string, unknown>) => {
-      const paths = Object.keys(updates);
-      if (paths.length === 0) return;
-      setCfg(prev => {
-        historyRef.current.push(JSON.stringify(prev));
-        if (historyRef.current.length > 50) historyRef.current.shift();
-        lastPushRef.current = Date.now();
-        setCanUndo(true);
-        const next = JSON.parse(JSON.stringify(prev));
-        for (const path of paths) {
-          const value = updates[path];
-          const keys = path.split(".");
-          let obj: any = next;
-          for (let i = 0; i < keys.length - 1; i++) {
-            const k = keys[i];
-            if (obj[k] == null || typeof obj[k] !== "object") obj[k] = {};
-            obj = obj[k];
-          }
-          obj[keys[keys.length - 1]] = value;
-        }
-        try {
-          localStorage.setItem(storageKey, JSON.stringify(next));
-        } catch {}
-        return next;
-      });
-    },
-    [storageKey],
-  );
-
-  return [cfg, update, reset, undo, canUndo, batchUpdate];
-}
+import type { PlaygroundConfig } from "./playground/types";
+import { APP_CATEGORIES, DEFAULTS } from "./playground/types";
+import { usePlayground, type ColorTheme, loadSavedThemes, saveThemesToStorage, CLASSIC_THEME, applyThemeColors, extractColorsFromCfg, extractRightPanelSyncSnapshot, rightPanelSyncPathsForTarget, buildRightPanelSyncUpdates, LS_KEY_ARC, LS_KEY_GLOBAL_BG, LS_KEY_ACTIVE_THEME } from "./playground/usePlayground";
+import {
+  ColorRow,
+  SliderRow,
+  SliderRowWithInput,
+  ToggleRow,
+} from "./components/ui-primitives";
+import { buildAiContextString } from "./lib/ai-context";
+import {
+  arcSvgPath,
+  arcXY,
+  deriveCharScore,
+  deriveQualityMetrics,
+  dotsInGroup,
+  hexWithOpacity,
+  qualityToStars,
+  tToAngle,
+  typeGroupR,
+} from "./lib/geometry";
+import { IS_AUTHORING } from "@/lib/authoring";
 
 /* ═══ Non-configurable constants ═══ */
 
@@ -1450,56 +45,26 @@ const DQ_LABELS = [
 
 const DOM_GAP = 0.018;
 
-/** Append alpha (0–100% of opacity) to `#RRGGBB` for layer-tinted card borders and fills */
-function hexWithOpacity(hexColor: string, opacityPct: number): string {
-  const raw = hexColor.replace(/^#/, "");
-  if (!/^[0-9a-fA-F]{6}$/.test(raw)) return hexColor;
-  const n = Math.max(0, Math.min(100, opacityPct));
-  const byte = Math.round((n / 100) * 255);
-  return `#${raw}${byte.toString(16).padStart(2, "0")}`;
-}
-
 const PANEL_TABS = [
   { id: "overview", label: "Overview", icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0h4" },
   { id: "cost", label: "Cost", icon: "M12 8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-7 2a7 7 0 1114 0 7 7 0 01-14 0z" },
   { id: "catalogue", label: "Catalogue", icon: "M4 6h16M4 10h16M4 14h16M4 18h16" },
   { id: "pipeline", label: "Pipeline", icon: "M13 10V3L4 14h7v7l9-11h-7z" },
   { id: "quality", label: "Quality", icon: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" },
+  { id: "askai", label: "Ask Atlas", icon: "M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" },
 ] as const;
 
 /* ═══ Types ═══ */
-interface GNode { id: string; label: string; tier: string; qualityScore: number; productType: string; domainId: string; domainName: string; color: string; }
-interface GEdge { id: string; source: string; target: string; edgeType: string; label: string; }
+interface GNode { id: string; label: string; qualityScore: number; productType: string; domainId: string; domainName: string; color: string; }
+interface GEdge { id: string; source: string; target: string; edgeType: string; label: string; edgeStatus: "HEALTHY" | "BROKEN" | "WARNING"; statusReason?: string | null; }
 interface PNode extends GNode { x: number; y: number; r: number; upstreamIds?: string[]; }
 interface PApp { id: string; name: string; app_type: string; vendor: string; description: string; domain_name: string; color_hex: string; conn_status: string; sync_frequency: string; monthly_cost_usd: number; rows_per_sync_avg: number; connector_type: string; destination_name: string; x: number; y: number; }
 interface TypeGroup { type: string; color: string; apps: PApp[]; cx: number; cy: number; r: number; }
 interface DCluster { domain: string; color: string; cx: number; cy: number; radius: number; groups: TypeGroup[]; }
 type Sel = { kind: "product"; id: string } | { kind: "app"; id: string } | null;
 interface AppProductLink { app_id: string; product_id: string; }
-interface Props { graph: { nodes: GNode[]; edges: GEdge[] }; overview: any; domains: any[]; apps: any[]; products: any[]; policies: any[]; execKpis: any; appProductLinks: AppProductLink[]; pipelineStatus: any[]; }
+interface Props { graph: { nodes: GNode[]; edges: GEdge[] }; overview: import("@/lib/db-types").MeshOverviewRow | undefined; domains: import("@/lib/db-types").DomainHealthRow[]; apps: import("@/lib/db-types").ApplicationRow[]; products: import("@/lib/db-types").DataProductRow[]; policies: import("@/lib/db-types").GovernancePolicyRow[]; execKpis: import("@/lib/db-types").ExecKpisRow | undefined; appProductLinks: AppProductLink[]; pipelineStatus: import("@/lib/db-types").PipelineStatusRow[]; productPipelineStatus: import("@/lib/db-types").ProductPipelineStatusRow[]; productPipelineRuns: import("@/lib/db-types").ProductPipelineRunRow[]; recentSyncLogs: import("@/lib/db-types").SyncLogRow[]; connectionHealth: import("@/lib/db-types").ConnectionHealthRow[]; }
 
-/* ═══ Geometry helpers (parameterized) ═══ */
-function tToAngle(t: number, pad: number) {
-  const aLeft = Math.PI * (1 - pad);
-  return aLeft - t * (aLeft - Math.PI * pad);
-}
-function arcXY(r: number, t: number, cx: number, cy: number, pad: number): [number, number] {
-  const a = tToAngle(t, pad);
-  return [cx + r * Math.cos(a), cy - r * Math.sin(a)];
-}
-function arcSvgPath(r: number, cx: number, cy: number, pad: number) {
-  const [x1, y1] = arcXY(r, 0, cx, cy, pad);
-  const [x2, y2] = arcXY(r, 1, cx, cy, pad);
-  return `M ${x1} ${y1} A ${r} ${r} 0 0 1 ${x2} ${y2}`;
-}
-
-function qualityToStars(q: number): number {
-  if (q >= 0.95) return 5;
-  if (q >= 0.85) return 4;
-  if (q >= 0.75) return 3;
-  if (q >= 0.60) return 2;
-  return 1;
-}
 function starColor(stars: number): string {
   if (stars >= 4) return "#8fcd73";
   if (stars >= 3) return "#dab508";
@@ -1570,20 +135,6 @@ const DATA_PRODUCT_CHARS = [
   { key: "secure", label: "Secure", desc: "Grants config, terraform", icon: "M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" },
 ] as const;
 
-function deriveCharScore(p: any): Record<string, number> {
-  const q = p.quality_score || 0;
-  const hash = (p.id || "").split("").reduce((s: number, c: string) => s + c.charCodeAt(0), 0);
-  return {
-    discoverable: Math.min(100, Math.round(q * 100 + ((hash * 7) % 11) - 5)),
-    addressable: Math.min(100, Math.round(q * 100 + ((hash * 3) % 9) - 4)),
-    understandable: Math.min(100, Math.round(q * (p.description ? 105 : 70))),
-    trustworthy: Math.min(100, Math.round(q * (p.sla_freshness ? 102 : 80))),
-    accessible: Math.min(100, Math.round(q * 100 + ((hash * 11) % 7) - 2)),
-    interoperable: Math.min(100, Math.round(q * 100 + ((hash * 13) % 8) - 3)),
-    valuable: Math.min(100, Math.round(q * (p.owner ? 103 : 75))),
-    secure: Math.min(100, Math.round(q * 100 + ((hash * 5) % 10) - 5)),
-  };
-}
 function qualityMethodText(metricKey: string) {
   switch (metricKey) {
     case "completeness": return "Coverage of required fields, null-rate thresholds, and contract-required columns.";
@@ -1634,30 +185,6 @@ function buildQualityFailures(metricKey: string, productName: string, failedCoun
     severity: idx === 0 ? ("high" as const) : ("medium" as const),
     issue,
   }));
-}
-function typeGroupR(count: number) { return count <= 1 ? 10 : count <= 2 ? 13 : count <= 3 ? 15 : count <= 5 ? 18 : 20; }
-
-function dotsInGroup(cx: number, cy: number, count: number, groupR: number, dotR: number): [number, number][] {
-  if (count === 0) return [];
-  if (count === 1) return [[cx, cy]];
-  const ringR = groupR - dotR - 2;
-  if (count <= 6) return Array.from({ length: count }, (_, i) => { const a = (i / count) * Math.PI * 2 - Math.PI / 2; return [cx + ringR * Math.cos(a), cy + ringR * Math.sin(a)] as [number, number]; });
-  const outerN = Math.ceil(count * 0.6), innerN = count - outerN, innerR = ringR * 0.5;
-  const pos: [number, number][] = [];
-  for (let i = 0; i < outerN; i++) { const a = (i / outerN) * Math.PI * 2 - Math.PI / 2; pos.push([cx + ringR * Math.cos(a), cy + ringR * Math.sin(a)]); }
-  for (let i = 0; i < innerN; i++) { const a = (i / innerN) * Math.PI * 2 - Math.PI / 2; pos.push([cx + innerR * Math.cos(a), cy + innerR * Math.sin(a)]); }
-  return pos;
-}
-
-function deriveQualityMetrics(prods: any[]): Record<string, number> {
-  if (!prods.length) return { completeness: 0, accuracy: 0, consistency: 0, timeliness: 0, validity: 0, uniqueness: 100 };
-  const avgQ = prods.reduce((s: number, p: any) => s + (p.quality_score || 0), 0) / prods.length;
-  const withDesc = prods.filter((p: any) => p.description).length;
-  const withOwner = prods.filter((p: any) => p.owner).length;
-  const withSla = prods.filter((p: any) => p.sla_freshness).length;
-  const completeness = Math.round((withDesc + withOwner + withSla) / (prods.length * 3) * 100);
-  const seed = (s: number) => Math.round(Math.min(99, Math.max(60, avgQ * 100 + s)));
-  return { completeness, accuracy: seed(0), consistency: seed(3), timeliness: seed(-4), validity: seed(5), uniqueness: seed(8) };
 }
 
 /* ═══ Hexagonal Radar DQ Chart ═══ */
@@ -1758,222 +285,72 @@ function wrapTextToLines(text: string, maxCharsPerLine: number): string[] {
   return lines;
 }
 
-/* ═══ Playground UI helpers ═══ */
-/** Empty string = inherit default; null = not a complete color yet (partial edit). */
-function tryCommitColorText(raw: string): string | null {
-  const t = raw.trim();
-  if (t === "") return "";
-  if (/^#[0-9a-fA-F]{6}$/i.test(t)) return t.toLowerCase();
-  if (/^#[0-9a-fA-F]{3}$/i.test(t)) {
-    const s = t.slice(1);
-    return `#${s[0]}${s[0]}${s[1]}${s[1]}${s[2]}${s[2]}`.toLowerCase();
-  }
-  return null;
-}
-
-/** Valid #rgb / #rrggbb for native color input (always 6-digit hex). */
-function hexForColorPicker(v: string): string {
-  const c = tryCommitColorText(v);
-  if (c === "" || c === null) return "#000000";
-  return c;
-}
-
-function ToggleRow({ label, value, onChange }: { label: string; value: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <div className="flex items-center justify-between mb-1.5">
-      <span className="text-[10px] font-medium text-gray-700">{label}</span>
-      <button onClick={() => onChange(!value)} className={`w-8 h-[18px] rounded-full cursor-pointer transition-colors relative ${value ? "bg-gray-800" : "bg-gray-200"}`}>
-        <span className={`absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white shadow transition-transform ${value ? "left-[16px]" : "left-[2px]"}`} />
-      </button>
-    </div>
-  );
-}
-function ColorRow({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
-  const [text, setText] = useState(value);
-  useEffect(() => { setText(value); }, [value]);
-
-  return (
-    <div className="flex items-center gap-2 mb-1.5">
-      <span className="text-[10px] font-medium text-gray-700 flex-1 truncate">{label}</span>
-      <input
-        type="text"
-        value={text}
-        onChange={e => {
-          const raw = e.target.value;
-          setText(raw);
-          const c = tryCommitColorText(raw);
-          if (c !== null) onChange(c);
-        }}
-        onBlur={() => {
-          const c = tryCommitColorText(text);
-          if (c !== null) onChange(c);
-          else setText(value);
-        }}
-        className="w-[62px] px-1 py-0.5 rounded border border-gray-200 text-[9px] font-mono text-gray-600 text-center focus:outline-none focus:ring-1 focus:ring-gray-300 shrink-0"
-        placeholder="default"
-        title="Leave empty to use the default color"
-      />
-      <input
-        type="color"
-        value={hexForColorPicker(value)}
-        onChange={e => {
-          const next = e.target.value.toLowerCase();
-          onChange(next);
-          setText(next);
-        }}
-        className="w-5 h-5 rounded border border-gray-200 cursor-pointer p-0 shrink-0"
-        title="Sets an explicit hex color"
-      />
-    </div>
-  );
-}
-
 const CUSTOM_TEXT_ALIGNS = ["left", "center", "right", "justify", "start", "end"] as const;
 
-function PreciseNumberInput({
-  value,
-  min,
-  max,
-  inputStep,
-  onChange,
-  className,
-}: {
-  value: number;
-  min: number;
-  max: number;
-  inputStep: number;
-  onChange: (v: number) => void;
-  className?: string;
-}) {
-  const [text, setText] = useState(() => String(value));
-  const [focused, setFocused] = useState(false);
-  useEffect(() => {
-    if (!focused) setText(String(value));
-  }, [value, focused]);
-  const commit = () => {
-    const n = parseFloat(String(text).replace(",", "."));
-    if (Number.isNaN(n)) {
-      setText(String(value));
-      return;
+/* ═══ Lightweight markdown renderer for AI responses ═══ */
+function AiMarkdown({ text }: { text: string }) {
+  if (!text) return <span className="text-gray-400 italic">Thinking...</span>;
+  const lines = text.split("\n");
+  const elements: ReactNode[] = [];
+  let inCodeBlock = false;
+  let codeLang = "";
+  let codeLines: string[] = [];
+
+  const inlineFormat = (s: string): ReactNode => {
+    const parts: ReactNode[] = [];
+    const regex = /(\*\*(.+?)\*\*|`([^`]+)`|_(.+?)_)/g;
+    let last = 0;
+    let match: RegExpExecArray | null;
+    while ((match = regex.exec(s)) !== null) {
+      if (match.index > last) parts.push(s.slice(last, match.index));
+      if (match[2]) parts.push(<strong key={match.index} className="font-bold">{match[2]}</strong>);
+      else if (match[3]) parts.push(<code key={match.index} className="bg-gray-100 px-1 py-0.5 rounded text-[10px] font-mono text-indigo-600">{match[3]}</code>);
+      else if (match[4]) parts.push(<em key={match.index}>{match[4]}</em>);
+      last = match.index + match[0].length;
     }
-    let v = Math.min(max, Math.max(min, n));
-    if (inputStep > 0) v = Math.round(v / inputStep) * inputStep;
-    v = Number(v.toFixed(6));
-    onChange(v);
-    setText(String(v));
+    if (last < s.length) parts.push(s.slice(last));
+    return parts.length === 1 ? parts[0] : <>{parts}</>;
   };
-  return (
-    <input
-      type="text"
-      inputMode="decimal"
-      value={text}
-      onChange={e => setText(e.target.value)}
-      onFocus={() => setFocused(true)}
-      onBlur={() => {
-        setFocused(false);
-        commit();
-      }}
-      onKeyDown={e => {
-        if (e.key === "Enter") {
-          commit();
-          (e.target as HTMLInputElement).blur();
-        }
-      }}
-      className={className}
-    />
-  );
-}
 
-function SliderRow({
-  label,
-  value,
-  min,
-  max,
-  step,
-  onChange,
-  unit,
-  inputStep,
-}: {
-  label: string;
-  value: number;
-  min: number;
-  max: number;
-  step: number;
-  onChange: (v: number) => void;
-  unit?: string;
-  /** When set, shows a numeric field so values between slider steps are reachable */
-  inputStep?: number;
-}) {
-  const fine = inputStep ?? (step >= 1 ? 1 : step);
-  return (
-    <div className="mb-2">
-      <div className="flex justify-between items-center mb-0.5 gap-1">
-        <span className="text-[10px] font-medium text-gray-700 shrink min-w-0">{label}</span>
-        <div className="flex items-center gap-1 shrink-0">
-          <PreciseNumberInput
-            value={value}
-            min={min}
-            max={max}
-            inputStep={fine}
-            onChange={onChange}
-            className="w-[52px] px-1 py-0.5 rounded border border-gray-200 text-[9px] font-mono text-gray-700 text-right focus:outline-none focus:ring-1 focus:ring-gray-300"
-          />
-          {unit != null && unit !== "" && <span className="text-[9px] font-bold text-gray-400 tabular-nums">{unit}</span>}
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (line.startsWith("```")) {
+      if (inCodeBlock) {
+        elements.push(<pre key={`cb${i}`} className="bg-gray-900 text-green-300 rounded-lg p-2.5 text-[9.5px] font-mono overflow-x-auto my-1.5 leading-[1.6]">{codeLines.join("\n")}</pre>);
+        codeLines = []; inCodeBlock = false; codeLang = "";
+      } else { inCodeBlock = true; codeLang = line.slice(3).trim(); }
+      continue;
+    }
+    if (inCodeBlock) { codeLines.push(line); continue; }
+    if (!line.trim()) { elements.push(<div key={`br${i}`} className="h-2" />); continue; }
+    if (line.startsWith("### ")) { elements.push(<div key={i} className="font-bold text-[11px] mt-2 mb-0.5">{inlineFormat(line.slice(4))}</div>); continue; }
+    if (line.startsWith("## ")) { elements.push(<div key={i} className="font-bold text-[12px] mt-2.5 mb-0.5">{inlineFormat(line.slice(3))}</div>); continue; }
+    if (line.startsWith("# ")) { elements.push(<div key={i} className="font-bold text-[13px] mt-3 mb-1">{inlineFormat(line.slice(2))}</div>); continue; }
+    if (/^[-*] /.test(line)) { elements.push(<div key={i} className="flex gap-1.5 ml-1"><span className="text-gray-400 shrink-0 mt-0.5">&#8226;</span><span>{inlineFormat(line.slice(2))}</span></div>); continue; }
+    if (/^\d+\. /.test(line)) { const m = line.match(/^(\d+)\. (.*)/); if (m) elements.push(<div key={i} className="flex gap-1.5 ml-1"><span className="text-gray-400 shrink-0 font-mono text-[10px]">{m[1]}.</span><span>{inlineFormat(m[2])}</span></div>); continue; }
+    if (line.startsWith("|") && line.endsWith("|")) {
+      const cells = line.slice(1, -1).split("|").map(c => c.trim());
+      if (cells.every(c => /^-+$/.test(c))) continue;
+      const isHeader = i + 1 < lines.length && /^\|[-| ]+\|$/.test(lines[i + 1]);
+      elements.push(
+        <div key={i} className={`flex gap-px text-[9.5px] ${isHeader ? "font-bold bg-gray-100" : "bg-white"} rounded overflow-hidden`}>
+          {cells.map((c, j) => <div key={j} className="flex-1 px-1.5 py-1 border-b border-gray-100 truncate">{inlineFormat(c)}</div>)}
         </div>
-      </div>
-      <input type="range" min={min} max={max} step={step} value={value} onChange={e => onChange(Number(e.target.value))}
-        className="w-full h-1 bg-gray-200 rounded-full appearance-none cursor-pointer accent-gray-600" />
-    </div>
-  );
-}
-
-function SliderRowWithInput({
-  label,
-  value,
-  min,
-  max,
-  step,
-  onChange,
-  unit,
-  inputStep,
-}: {
-  label: string;
-  value: number;
-  min: number;
-  max: number;
-  step: number;
-  onChange: (v: number) => void;
-  unit?: string;
-  /** Step applied when committing the number field (can be finer than the range `step`) */
-  inputStep?: number;
-}) {
-  const is = inputStep ?? step;
-  return (
-    <div className="mb-2">
-      <div className="flex justify-between items-center mb-0.5 gap-1">
-        <span className="text-[10px] font-medium text-gray-700 shrink-0">{label}</span>
-        <div className="flex items-center gap-1 shrink-0">
-          <PreciseNumberInput
-            value={value}
-            min={min}
-            max={max}
-            inputStep={is}
-            onChange={onChange}
-            className="w-[56px] px-1 py-0.5 rounded border border-gray-200 text-[9px] font-mono text-gray-700 text-right focus:outline-none focus:ring-1 focus:ring-gray-300"
-          />
-          {unit ? <span className="text-[9px] text-gray-400">{unit}</span> : null}
-        </div>
-      </div>
-      <input type="range" min={min} max={max} step={step} value={value} onChange={e => onChange(Number(e.target.value))}
-        className="w-full h-1 bg-gray-200 rounded-full appearance-none cursor-pointer accent-gray-600" />
-    </div>
-  );
+      );
+      continue;
+    }
+    elements.push(<p key={i}>{inlineFormat(line)}</p>);
+  }
+  if (inCodeBlock && codeLines.length > 0) {
+    elements.push(<pre key="cblast" className="bg-gray-900 text-green-300 rounded-lg p-2.5 text-[9.5px] font-mono overflow-x-auto my-1.5 leading-[1.6]">{codeLines.join("\n")}</pre>);
+  }
+  return <div className="space-y-0.5">{elements}</div>;
 }
 
 /* ═══════════════════════════════════════════════════
    MAIN COMPONENT
    ═══════════════════════════════════════════════════ */
-export default function MeshAtlasClient({ graph, overview, domains, apps, products, execKpis, appProductLinks, pipelineStatus }: Props) {
+export default function MeshAtlasClient({ graph, overview, domains, apps, products, execKpis, appProductLinks, pipelineStatus, productPipelineStatus, productPipelineRuns, recentSyncLogs, connectionHealth }: Props) {
   const [arcCfg, updateArcCfg, resetArcCfg, undoArcCfg, , batchUpdateCfg] = usePlayground(LS_KEY_ARC);
 
   const cfg = useMemo<PlaygroundConfig>(() => ({
@@ -1991,13 +368,59 @@ export default function MeshAtlasClient({ graph, overview, domains, apps, produc
   }, [cfg.bg]);
 
   const DESIGN_WIDTH = 1728;
-  const [uiZoom, setUiZoom] = useState(1);
+  const DESIGN_HEIGHT = Math.max(cfg.vh + 40, 840);
+  const NAV_HEIGHT = 64;
+  const VIEWPORT_MARGIN = 4;
+  const MAX_EFFECTIVE_STAGE_SCALE = 1.5;
+  const [viewportSize, setViewportSize] = useState({ w: DESIGN_WIDTH, h: DESIGN_HEIGHT + NAV_HEIGHT });
   useEffect(() => {
-    const calc = () => setUiZoom(Math.max(0.55, Math.min(1.6, window.innerWidth / DESIGN_WIDTH)));
+    const calc = () => {
+      const vv = window.visualViewport;
+      setViewportSize({
+        w: Math.round(vv?.width ?? window.innerWidth),
+        h: Math.round(vv?.height ?? window.innerHeight),
+      });
+    };
     calc();
     window.addEventListener("resize", calc);
-    return () => window.removeEventListener("resize", calc);
-  }, []);
+    window.visualViewport?.addEventListener("resize", calc);
+    window.visualViewport?.addEventListener("scroll", calc);
+    return () => {
+      window.removeEventListener("resize", calc);
+      window.visualViewport?.removeEventListener("resize", calc);
+      window.visualViewport?.removeEventListener("scroll", calc);
+    };
+  }, [DESIGN_HEIGHT]);
+  const availableWidth = Math.max(0, viewportSize.w - VIEWPORT_MARGIN * 2);
+  const availableHeight = Math.max(0, viewportSize.h - NAV_HEIGHT - VIEWPORT_MARGIN * 2);
+  const fitZoom = useMemo(() => {
+    const widthScale = availableWidth / DESIGN_WIDTH;
+    const heightScale = availableHeight / DESIGN_HEIGHT;
+    return Math.min(Math.max(0.01, widthScale), Math.max(0.01, heightScale));
+  }, [DESIGN_HEIGHT, DESIGN_WIDTH, availableHeight, availableWidth]);
+  const requestedStageScale = Math.max(0.5, cfg.stageScaleFactor ?? 1);
+  const uiZoom = useMemo(
+    () => Math.min(MAX_EFFECTIVE_STAGE_SCALE, fitZoom * requestedStageScale),
+    [MAX_EFFECTIVE_STAGE_SCALE, fitZoom, requestedStageScale]
+  );
+  const scaledStageWidth = DESIGN_WIDTH * uiZoom;
+  const scaledStageHeight = DESIGN_HEIGHT * uiZoom;
+  const stageLeft = useMemo(
+    () => (scaledStageWidth + VIEWPORT_MARGIN * 2 <= viewportSize.w ? Math.max(VIEWPORT_MARGIN, (viewportSize.w - scaledStageWidth) / 2) : VIEWPORT_MARGIN),
+    [VIEWPORT_MARGIN, scaledStageWidth, viewportSize.w]
+  );
+  const stageTop = useMemo(
+    () => (scaledStageHeight + VIEWPORT_MARGIN * 2 <= availableHeight ? NAV_HEIGHT + Math.max(VIEWPORT_MARGIN, (availableHeight - scaledStageHeight) / 2) : NAV_HEIGHT + VIEWPORT_MARGIN),
+    [DESIGN_HEIGHT, NAV_HEIGHT, VIEWPORT_MARGIN, availableHeight, scaledStageHeight]
+  );
+  const stageCanvasWidth = useMemo(
+    () => Math.max(viewportSize.w, stageLeft + scaledStageWidth + VIEWPORT_MARGIN),
+    [VIEWPORT_MARGIN, scaledStageWidth, stageLeft, viewportSize.w]
+  );
+  const stageCanvasHeight = useMemo(
+    () => Math.max(viewportSize.h, stageTop + scaledStageHeight + VIEWPORT_MARGIN),
+    [VIEWPORT_MARGIN, scaledStageHeight, stageTop, viewportSize.h]
+  );
 
   const [savedThemes, setSavedThemes] = useState<ColorTheme[]>(() => loadSavedThemes());
   const [activeThemeId, setActiveThemeId] = useState<string | null>(() => {
@@ -2067,6 +490,7 @@ export default function MeshAtlasClient({ graph, overview, domains, apps, produc
     cataloguePanel: false,
     qualityPanel: false,
     pipelinePanel: false,
+    toggleBars: false,
   });
   const [editingLegendText, setEditingLegendText] = useState<{ cfgPath: string; x: number; y: number; value: string; width: number } | null>(null);
   const [pgProductQuery, setPgProductQuery] = useState("");
@@ -2096,20 +520,41 @@ export default function MeshAtlasClient({ graph, overview, domains, apps, produc
   const [pipeBanTab, setPipeBanTab] = useState<"ingestion" | "dataproduct">("ingestion");
   const [pipeArchTab, setPipeArchTab] = useState<"source" | "business" | "consumer">("source");
   const [pipeDetailTab, setPipeDetailTab] = useState<"models" | "logs">("models");
-  const [pipeModelTab, setPipeModelTab] = useState<"ingestion" | "stage" | "mart">("ingestion");
+  const [pipeModelTab, setPipeModelTab] = useState<"all" | "connector" | "ingestion" | "staging" | "stage" | "mart">("all");
   const [pipeLogTab, setPipeLogTab] = useState<"success" | "warnings" | "failure">("success");
   const [pipeLineageFocusId, setPipeLineageFocusId] = useState<string | null>(null);
   const [qualitySearch, setQualitySearch] = useState("");
-  const [showUpDown, setShowUpDown] = useState(false);
-  const [focusTogglePos, setFocusTogglePos] = useState<{ x: number; y: number }>({ x: 20, y: -60 });
+  const [showUpDown, setShowUpDown] = useState(true);
+  const [focusTogglePos, setFocusTogglePos] = useState<{ x: number; y: number }>(() => {
+    if (typeof window !== "undefined") { try { const s = localStorage.getItem("meshlens-focus-pos"); if (s) return JSON.parse(s); } catch {} }
+    return { x: 20, y: -60 };
+  });
+  useEffect(() => { try { localStorage.setItem("meshlens-focus-pos", JSON.stringify(focusTogglePos)); } catch {} }, [focusTogglePos]);
   const focusToggleDrag = useRef<{ sx: number; sy: number; ox: number; oy: number } | null>(null);
+  const [highlightIssues, setHighlightIssues] = useState(false);
+  const [issuesTogglePos, setIssuesTogglePos] = useState<{ x: number; y: number }>(() => {
+    if (typeof window !== "undefined") { try { const s = localStorage.getItem("meshlens-issues-pos"); if (s) return JSON.parse(s); } catch {} }
+    return { x: 20, y: -100 };
+  });
+  useEffect(() => { try { localStorage.setItem("meshlens-issues-pos", JSON.stringify(issuesTogglePos)); } catch {} }, [issuesTogglePos]);
+  const issuesToggleDrag = useRef<{ sx: number; sy: number; ox: number; oy: number } | null>(null);
   const [appViewMode, setAppViewMode] = useState<"apps" | "source" | "business" | "consumer">("apps");
   const [pgPos, setPgPos] = useState<{ x: number; y: number } | null>(null);
   const pgDrag = useRef<{ ox: number; oy: number; sx: number; sy: number } | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const stageViewportRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+  const [stageScroll, setStageScroll] = useState({ x: 0, y: 0 });
   const labelDrag = useRef<{ id: string; grabOffsetX: number; grabOffsetY: number; origPerX: number; origPerY: number; baseLx: number; baseLy: number } | null>(null);
   const [draggingLabelId, setDraggingLabelId] = useState<string | null>(null);
+
+  /* ── Ask AI chat state ── */
+  const [aiMessages, setAiMessages] = useState<{ role: "user" | "assistant"; text: string }[]>([]);
+  const [aiInput, setAiInput] = useState("");
+  const [aiStreaming, setAiStreaming] = useState(false);
+  const aiScrollRef = useRef<HTMLDivElement>(null);
+  const aiAbortRef = useRef<AbortController | null>(null);
+
   useEffect(() => { panelRef.current?.scrollTo({ top: 0, behavior: "smooth" }); }, [sel, panelTab]);
   useEffect(() => { setQualityDrilldown(null); }, [sel, panelTab]);
   useEffect(() => { setPipeLineageFocusId(null); }, [sel?.kind, sel?.id, panelTab]);
@@ -2304,7 +749,8 @@ export default function MeshAtlasClient({ graph, overview, domains, apps, produc
   }, [cfg.cx, cfg.cy, cfg.flow.anchor]);
 
   const appSourceEdges = useMemo(() => {
-    const edges: { id: string; d: string; healthy: boolean; appId: string; productId: string; domain: string }[] = [];
+    type ASEdgeStatus = "HEALTHY" | "BROKEN" | "WARNING";
+    const edges: { id: string; d: string; healthy: boolean; status: ASEdgeStatus; appId: string; productId: string; domain: string }[] = [];
     const appPosMap = new Map(allPosApps.map(a => [a.id, a]));
     const seen = new Set<string>();
     for (const link of appProductLinks) {
@@ -2326,15 +772,31 @@ export default function MeshAtlasClient({ graph, overview, domains, apps, produc
       const cp1a = angA + delta * sp;
       const cp2a = angA + delta * (1 - sp);
       const d = `M ${x1} ${y1} C ${cfg.cx + rCorr * Math.cos(cp1a)} ${cfg.cy + rCorr * Math.sin(cp1a)}, ${cfg.cx + rCorr * Math.cos(cp2a)} ${cfg.cy + rCorr * Math.sin(cp2a)}, ${x2} ${y2}`;
-      edges.push({ id: `as-${app.id}-${prod.id}`, d, healthy: app.conn_status === "ACTIVE", appId: app.id, productId: prod.id, domain: app.domain_name });
+      const st: ASEdgeStatus = app.conn_status === "BROKEN" ? "BROKEN" : app.conn_status === "ACTIVE" ? "HEALTHY" : "WARNING";
+      edges.push({ id: `as-${app.id}-${prod.id}`, d, healthy: st === "HEALTHY", status: st, appId: app.id, productId: prod.id, domain: app.domain_name });
     }
     return edges;
   }, [allPosApps, pMap, appProductLinks, cfg.appDotR, cfg.cx, cfg.cy, cfg.radii, cfg.flow.anchor, cfg.flow.noodle.appSourceCorridor, cfg.flow.noodle.appSourceSpread, anchorPt]);
 
   const lineageEdges = useMemo(() => {
+    // Compute business products with broken/warning upstream for cascade
+    const bizWithBrokenUpstream = new Set<string>();
+    for (const e of graph.edges) {
+      if ((e.edgeStatus === "BROKEN" || e.edgeStatus === "WARNING") && e.target.startsWith("biz-")) {
+        bizWithBrokenUpstream.add(e.target);
+      }
+    }
+    const effectiveStatus = (e: GEdge): "HEALTHY" | "BROKEN" | "WARNING" => {
+      if (e.edgeStatus === "BROKEN" || e.edgeStatus === "WARNING") return e.edgeStatus;
+      const srcNode = pMap.get(e.source);
+      if (srcNode && srcNode.productType === "BUSINESS" && bizWithBrokenUpstream.has(e.source)) return "WARNING";
+      return "HEALTHY";
+    };
+
     return graph.edges.map(e => {
       const a = pMap.get(e.source), b = pMap.get(e.target);
       if (!a || !b) return null;
+      const eStatus = effectiveStatus(e);
       const sameLayer = a.productType === b.productType;
 
       const angA = Math.atan2(a.y - cfg.cy, a.x - cfg.cx);
@@ -2360,7 +822,7 @@ export default function MeshAtlasClient({ graph, overview, domains, apps, produc
             const s = span > cfg.flow.noodle.farSpanThreshold ? cfg.flow.noodle.businessBusinessFarSpread : cfg.flow.noodle.businessBusinessNearSpread;
             const cp1a = at(s);
             const cp2a = at(1 - s);
-            return { ...e, a, b, d: `M ${x1} ${y1} C ${cfg.cx + cpR * Math.cos(cp1a)} ${cfg.cy + cpR * Math.sin(cp1a)}, ${cfg.cx + cpR * Math.cos(cp2a)} ${cfg.cy + cpR * Math.sin(cp2a)}, ${x2} ${y2}`, healthy: b.qualityScore >= 0.76 };
+            return { ...e, a, b, d: `M ${x1} ${y1} C ${cfg.cx + cpR * Math.cos(cp1a)} ${cfg.cy + cpR * Math.sin(cp1a)}, ${cfg.cx + cpR * Math.cos(cp2a)} ${cfg.cy + cpR * Math.sin(cp2a)}, ${x2} ${y2}`, healthy: eStatus === "HEALTHY", eStatus };
           }
           // Other same-layer links keep inward bottom->bottom routing.
           const [x1, y1] = anchorPt(a.x, a.y, a.r + 2, a.productType, "downstream");
@@ -2377,7 +839,7 @@ export default function MeshAtlasClient({ graph, overview, domains, apps, produc
           const s = span > cfg.flow.noodle.farSpanThreshold ? farS : nearS;
           const cp1a = at(s);
           const cp2a = at(1 - s);
-          return { ...e, a, b, d: `M ${x1} ${y1} C ${cfg.cx + cpR * Math.cos(cp1a)} ${cfg.cy + cpR * Math.sin(cp1a)}, ${cfg.cx + cpR * Math.cos(cp2a)} ${cfg.cy + cpR * Math.sin(cp2a)}, ${x2} ${y2}`, healthy: b.qualityScore >= 0.76 };
+          return { ...e, a, b, d: `M ${x1} ${y1} C ${cfg.cx + cpR * Math.cos(cp1a)} ${cfg.cy + cpR * Math.sin(cp1a)}, ${cfg.cx + cpR * Math.cos(cp2a)} ${cfg.cy + cpR * Math.sin(cp2a)}, ${x2} ${y2}`, healthy: eStatus === "HEALTHY", eStatus };
         }
 
         const pair = `${a.productType}->${b.productType}`;
@@ -2389,7 +851,7 @@ export default function MeshAtlasClient({ graph, overview, domains, apps, produc
           const rCorr = rA + (rB - rA) * cfg.flow.noodle.sourceBusinessCorridor;
           const cp1a = at(0.33);
           const cp2a = at(0.67);
-          return { ...e, a, b, d: `M ${x1} ${y1} C ${cfg.cx + rCorr * Math.cos(cp1a)} ${cfg.cy + rCorr * Math.sin(cp1a)}, ${cfg.cx + rCorr * Math.cos(cp2a)} ${cfg.cy + rCorr * Math.sin(cp2a)}, ${x2} ${y2}`, healthy: b.qualityScore >= 0.76 };
+          return { ...e, a, b, d: `M ${x1} ${y1} C ${cfg.cx + rCorr * Math.cos(cp1a)} ${cfg.cy + rCorr * Math.sin(cp1a)}, ${cfg.cx + rCorr * Math.cos(cp2a)} ${cfg.cy + rCorr * Math.sin(cp2a)}, ${x2} ${y2}`, healthy: eStatus === "HEALTHY", eStatus };
         }
 
         // Business -> Consumer: bottom of business, top of consumer.
@@ -2407,7 +869,7 @@ export default function MeshAtlasClient({ graph, overview, domains, apps, produc
           const t2 = 1 - t1;
           const cp1a = at(t1);
           const cp2a = at(t2);
-          return { ...e, a, b, d: `M ${x1} ${y1} C ${cfg.cx + rBridge * Math.cos(cp1a)} ${cfg.cy + rBridge * Math.sin(cp1a)}, ${cfg.cx + rBridge * Math.cos(cp2a)} ${cfg.cy + rBridge * Math.sin(cp2a)}, ${x2} ${y2}`, healthy: b.qualityScore >= 0.76 };
+          return { ...e, a, b, d: `M ${x1} ${y1} C ${cfg.cx + rBridge * Math.cos(cp1a)} ${cfg.cy + rBridge * Math.sin(cp1a)}, ${cfg.cx + rBridge * Math.cos(cp2a)} ${cfg.cy + rBridge * Math.sin(cp2a)}, ${x2} ${y2}`, healthy: eStatus === "HEALTHY", eStatus };
         }
 
         // Fallback cross-layer: bottom(inner) -> top(outer)
@@ -2417,8 +879,8 @@ export default function MeshAtlasClient({ graph, overview, domains, apps, produc
         const rCorr = Math.min(rA, rB) + Math.abs(rB - rA) * 0.55;
         const cp1a = at(0.33);
         const cp2a = at(0.67);
-        return { ...e, a, b, d: `M ${x1} ${y1} C ${cfg.cx + rCorr * Math.cos(cp1a)} ${cfg.cy + rCorr * Math.sin(cp1a)}, ${cfg.cx + rCorr * Math.cos(cp2a)} ${cfg.cy + rCorr * Math.sin(cp2a)}, ${x2} ${y2}`, healthy: b.qualityScore >= 0.76 };
-    }).filter(Boolean) as (GEdge & { a: PNode; b: PNode; d: string; healthy: boolean })[];
+        return { ...e, a, b, d: `M ${x1} ${y1} C ${cfg.cx + rCorr * Math.cos(cp1a)} ${cfg.cy + rCorr * Math.sin(cp1a)}, ${cfg.cx + rCorr * Math.cos(cp2a)} ${cfg.cy + rCorr * Math.sin(cp2a)}, ${x2} ${y2}`, healthy: eStatus === "HEALTHY", eStatus };
+    }).filter(Boolean) as (GEdge & { a: PNode; b: PNode; d: string; healthy: boolean; eStatus: "HEALTHY" | "BROKEN" | "WARNING" })[];
   }, [graph.edges, pMap, cfg.cx, cfg.cy, cfg.radii, cfg.flow.curveTension, cfg.flow.anchor, cfg.flow.noodle, anchorPt, radPt]);
 
   const linked = useMemo(() => {
@@ -2535,6 +997,110 @@ export default function MeshAtlasClient({ graph, overview, domains, apps, produc
 
   const selProduct = sel?.kind === "product" ? products.find((p: any) => p.id === sel.id) : null;
   const selApp = sel?.kind === "app" ? (apps as any[]).find(a => a.id === sel.id) : null;
+
+  /* ── Ask AI context builder & sender (needs selProduct/selApp) ── */
+  const buildAiContext = useCallback(
+    () =>
+      buildAiContextString({
+        overview,
+        execKpis,
+        domains,
+        products,
+        apps,
+        productPipelineStatus,
+        productPipelineRuns,
+        selProduct,
+        selApp,
+        graph,
+        appProductLinks,
+        panelTab,
+      }),
+    [
+      overview,
+      execKpis,
+      domains,
+      products,
+      apps,
+      productPipelineStatus,
+      productPipelineRuns,
+      selProduct,
+      selApp,
+      graph,
+      appProductLinks,
+      panelTab,
+    ],
+  );
+
+  const sendAiMessage = useCallback(async (text: string) => {
+    if (!text.trim() || aiStreaming) return;
+    const userMsg = { role: "user" as const, text: text.trim() };
+    setAiMessages(prev => [...prev, userMsg]);
+    setAiInput("");
+    setAiStreaming(true);
+
+    const history = aiMessages.map(m => ({
+      role: m.role === "user" ? "user" as const : "model" as const,
+      parts: [{ text: m.text }],
+    }));
+
+    const controller = new AbortController();
+    aiAbortRef.current = controller;
+
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text.trim(), history, context: buildAiContext() }),
+        signal: controller.signal,
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Request failed" }));
+        setAiMessages(prev => [...prev, { role: "assistant", text: `Error: ${err.error}` }]);
+        setAiStreaming(false);
+        return;
+      }
+
+      const reader = res.body?.getReader();
+      if (!reader) { setAiStreaming(false); return; }
+      const decoder = new TextDecoder();
+      let accumulated = "";
+      setAiMessages(prev => [...prev, { role: "assistant", text: "" }]);
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split("\n").filter(l => l.startsWith("data: "));
+        for (const line of lines) {
+          const payload = line.slice(6).trim();
+          if (payload === "[DONE]") break;
+          try {
+            const parsed = JSON.parse(payload);
+            if (parsed.error) { accumulated += `\n\n_Error: ${parsed.error}_`; }
+            else if (parsed.text) { accumulated += parsed.text; }
+          } catch { /* skip malformed */ }
+        }
+        setAiMessages(prev => {
+          const copy = [...prev];
+          copy[copy.length - 1] = { role: "assistant", text: accumulated };
+          return copy;
+        });
+      }
+    } catch (err: any) {
+      if (err.name !== "AbortError") {
+        setAiMessages(prev => [...prev, { role: "assistant", text: `Error: ${err.message}` }]);
+      }
+    } finally {
+      setAiStreaming(false);
+      aiAbortRef.current = null;
+    }
+  }, [aiMessages, aiStreaming, buildAiContext]);
+
+  useEffect(() => {
+    if (aiScrollRef.current) aiScrollRef.current.scrollTop = aiScrollRef.current.scrollHeight;
+  }, [aiMessages]);
+
   const tuneProducts = useMemo(() => ([...(products as any[])]
     .map((p: any) => ({ id: p.id as string, name: p.name as string, product_type: p.product_type as string }))
     .sort((a, b) => a.name.localeCompare(b.name))), [products]);
@@ -2601,6 +1167,31 @@ export default function MeshAtlasClient({ graph, overview, domains, apps, produc
 
   const searchLower = search.toLowerCase();
   const searchMatch = (name: string) => !search || name.toLowerCase().includes(searchLower);
+  const searchHits = useMemo(() => {
+    if (!search.trim()) return [] as Array<{ id: string; name: string; score: number }>;
+    const q = searchLower.trim();
+    const score = (name: string) => {
+      const n = name.toLowerCase();
+      if (n === q) return 100;
+      if (n.startsWith(q)) return 75;
+      return n.includes(q) ? 50 : 0;
+    };
+    return (products as any[])
+      .map((p: any) => ({ id: p.id as string, name: p.name as string, score: score(p.name) }))
+      .filter(h => h.score > 0);
+  }, [search, searchLower, products]);
+  const commitSearchSelection = useCallback((productId: string) => {
+    setSel({ kind: "product", id: productId });
+    setSearch("");
+  }, []);
+  const applySearchSelection = useCallback(() => {
+    if (searchHits.length === 0) return;
+    commitSearchSelection(searchHits[0].id);
+  }, [searchHits, commitSearchSelection]);
+  const rankedSearchHits = useMemo(
+    () => [...searchHits].sort((a, b) => (b.score - a.score) || (a.name.length - b.name.length) || a.name.localeCompare(b.name)).slice(0, 8),
+    [searchHits]
+  );
   const isDim = (id: string, name: string, domainName?: string) => (search && !searchMatch(name)) || (hovDom != null && domainName != null && domainName !== hovDom) || (sel != null && !linked.has(id));
 
   function productTip(p: any): ReactNode {
@@ -2716,6 +1307,7 @@ export default function MeshAtlasClient({ graph, overview, domains, apps, produc
   }, []);
 
   const onLabelDragStart = useCallback((e: React.MouseEvent, productId: string, labelSvgX: number, labelSvgY: number) => {
+    if (!IS_AUTHORING) return;
     e.stopPropagation();
     e.preventDefault();
     const per = cfg.prodLabel.perProduct?.[productId] || { radius: 0, angle: 0, x: 0, y: 0, rotation: 0 };
@@ -2758,6 +1350,7 @@ export default function MeshAtlasClient({ graph, overview, domains, apps, produc
   const [draggingElem, setDraggingElem] = useState<string | null>(null);
 
   const onElemDragStart = useCallback((e: React.MouseEvent, key: string, cfgPathX: string, cfgPathY: string, curX: number, curY: number) => {
+    if (!IS_AUTHORING) return;
     e.stopPropagation(); e.preventDefault();
     const svgPt = screenToSvg(e.clientX, e.clientY);
     elemDrag.current = { key, grabX: svgPt.x - curX, grabY: svgPt.y - curY, origX: curX, origY: curY };
@@ -2775,6 +1368,7 @@ export default function MeshAtlasClient({ graph, overview, domains, apps, produc
 
   const customSepDrag = useRef<{ idx: number; sx: number; sy: number; x1: number; y1: number; x2: number; y2: number } | null>(null);
   const onCustomSepDragStart = useCallback((e: React.MouseEvent, idx: number, l: { id: string; x1: number; y1: number; x2: number; y2: number }) => {
+    if (!IS_AUTHORING) return;
     e.stopPropagation();
     e.preventDefault();
     const svgPt = screenToSvg(e.clientX, e.clientY);
@@ -2888,20 +1482,127 @@ export default function MeshAtlasClient({ graph, overview, domains, apps, produc
   const bdr = cfg.paneBorder;
 
   return (
-    <div className="min-h-screen pt-[64px]" style={{ background: cfg.bg }}>
-      <div className="flex gap-0" style={{ zoom: uiZoom, height: `calc((100vh - 64px) / ${uiZoom})`, background: cfg.bg, padding: `${bdr.padTop}px ${bdr.padSide}px ${bdr.padBottom}px ${bdr.padSide}px` }}>
+    <div style={{ background: cfg.bg }}>
+      <div
+        ref={stageViewportRef}
+        className="relative"
+        style={{ height: "100dvh", overflow: "auto" }}
+        onScroll={e => setStageScroll({ x: e.currentTarget.scrollLeft, y: e.currentTarget.scrollTop })}
+      >
+        <div className="relative" style={{ width: stageCanvasWidth, height: stageCanvasHeight }}>
+        <div
+        style={{
+          position: "absolute",
+          left: stageLeft,
+          top: stageTop,
+          width: scaledStageWidth,
+          height: scaledStageHeight,
+        }}
+      >
+          <div
+            className="flex gap-0"
+            style={{
+              width: DESIGN_WIDTH,
+              height: DESIGN_HEIGHT,
+              transform: `scale(${uiZoom})`,
+              transformOrigin: "top left",
+              background: cfg.bg,
+              padding: `${bdr.padTop}px ${bdr.padSide}px ${bdr.padBottom}px ${bdr.padSide}px`,
+            }}
+          >
 
         {/* LEFT: SVG Canvas */}
-        <div className="flex-1 min-w-0 relative overflow-hidden p-3" style={{ background: cfg.bg, border: `${bdr.width}px solid ${bdr.color}`, borderRadius: `${bdr.radius}px 0 0 ${bdr.radius}px`, borderRight: "none" }} onClick={() => setSel(null)}>
+        <div className="flex-1 min-w-0 min-h-0 relative overflow-hidden p-3" style={{ background: cfg.bg, border: `${bdr.width}px solid ${bdr.color}`, borderRadius: `${bdr.radius}px 0 0 ${bdr.radius}px`, borderRight: "none" }} onClick={() => setSel(null)}>
 
-          {cfg.show.searchBar && <div className="absolute top-6 left-1/2 -translate-x-1/2 z-10">
-            <div className="relative">
-              <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
-              <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search products, applications..."
-                className="w-[360px] pl-10 pr-4 py-2.5 rounded-full bg-white/95 border border-gray-200 text-[13px] text-gray-700 placeholder:text-gray-400 shadow-md focus:outline-none focus:ring-2 focus:ring-gray-200" />
-              {search && <button onClick={() => setSearch("")} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer text-[15px]">&times;</button>}
-            </div>
-          </div>}
+          {cfg.show.searchBar && (() => {
+            const su = cfg.searchBarUi;
+            const left = `calc(50% - ${su.width / 2}px + ${su.x}px)`;
+            const top = `${24 + su.y}px`;
+            const shadow = `0 6px 18px rgba(0,0,0,${Math.max(0, Math.min(0.45, su.shadow))})`;
+            const startSearchDrag = (startX: number, startY: number) => {
+              if (!IS_AUTHORING) return;
+              const startCfg = cfg.searchBarUi;
+              const onMove = (ev: MouseEvent) => {
+                const dx = ev.clientX - startX;
+                const dy = ev.clientY - startY;
+                updateCfg("searchBarUi.x", Math.round(startCfg.x + dx));
+                updateCfg("searchBarUi.y", Math.round(startCfg.y + dy));
+              };
+              const onUp = () => {
+                window.removeEventListener("mousemove", onMove);
+                window.removeEventListener("mouseup", onUp);
+              };
+              window.addEventListener("mousemove", onMove);
+              window.addEventListener("mouseup", onUp);
+            };
+            return (
+              <div className="absolute z-10" style={{ left, top }} onClick={e => e.stopPropagation()}>
+                <div className="relative"
+                  style={{ width: su.width }}
+                  onMouseDown={e => e.stopPropagation()}>
+                  <svg
+                    className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 cursor-grab active:cursor-grabbing"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke={su.icon}
+                    strokeWidth="2"
+                    onMouseDown={e => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      startSearchDrag(e.clientX, e.clientY);
+                    }}
+                  >
+                    <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
+                  </svg>
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    onClick={e => e.stopPropagation()}
+                    onKeyDown={e => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        applySearchSelection();
+                      }
+                    }}
+                    placeholder="Search products"
+                    className="w-full pl-10 pr-9 focus:outline-none focus:ring-2"
+                    style={{
+                      height: su.height,
+                      borderRadius: su.radius,
+                      background: su.bg,
+                      border: `1px solid ${su.border}`,
+                      color: su.text,
+                      fontSize: su.fontSize,
+                      boxShadow: shadow,
+                    }}
+                  />
+                  {search && (
+                    <button onClick={e => { e.stopPropagation(); setSearch(""); }} className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer text-[15px]"
+                      style={{ color: su.icon }}>
+                      &times;
+                    </button>
+                  )}
+                  {search.trim() && rankedSearchHits.length > 0 && (
+                    <div className="absolute left-0 right-0 mt-1 rounded-xl overflow-hidden" style={{ background: "#fff", border: `1px solid ${su.border}`, boxShadow: "0 10px 20px rgba(0,0,0,0.08)" }}>
+                      {rankedSearchHits.map(hit => (
+                        <button key={hit.id} className="w-full text-left px-3 py-1.5 text-[11px] flex items-center gap-2 hover:bg-gray-50 cursor-pointer"
+                          onMouseDown={e => e.preventDefault()}
+                          onClick={e => {
+                            e.stopPropagation();
+                            commitSearchSelection(hit.id);
+                          }}>
+                          <span className="w-1.5 h-1.5 rounded-full" style={{ background: cfg.layerColors.BUSINESS }} />
+                          <span className="font-semibold flex-1 truncate" style={{ color: cfg.text }}>{hit.name}</span>
+                          <span className="text-[9px] uppercase text-gray-400">Product</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
 
           <svg ref={svgRef} viewBox={`0 0 ${cfg.vw} ${cfg.vh}`} className="absolute inset-3 w-[calc(100%-24px)] h-[calc(100%-24px)]" preserveAspectRatio="xMidYMid meet">
             <defs>
@@ -2945,7 +1646,16 @@ export default function MeshAtlasClient({ graph, overview, domains, apps, produc
 .idle-flow-arrow{stroke-dasharray:8 4 2 4 2 20;animation:idleFlowStream ${cfg.flow.idleSpeed}s linear infinite;stroke-linecap:butt}
 .idle-flow-diamond{stroke-dasharray:1 6 4 6 1 22;animation:idleFlowStream ${cfg.flow.idleSpeed}s linear infinite;stroke-linecap:round}
 .idle-flow-dash{stroke-dasharray:10 18;animation:idleFlowStream ${cfg.flow.idleSpeed}s linear infinite;stroke-linecap:round}
-${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle-flow-dot,.idle-flow-glow,.idle-flow-arrow,.idle-flow-diamond,.idle-flow-dash{animation-play-state:paused!important}` : ""}
+.idle-flow-pulse{stroke-dasharray:4 28;animation:idleFlowStream ${cfg.flow.idleSpeed}s linear infinite,idleFlowPulse ${cfg.flow.idleSpeed * 0.6}s ease-in-out infinite;stroke-linecap:round}
+.idle-flow-ripple{stroke-dasharray:2 8 2 20;animation:idleFlowStream ${cfg.flow.idleSpeed * 0.8}s linear infinite;stroke-linecap:round;filter:drop-shadow(0 0 1px currentColor)}
+.idle-flow-spark{stroke-dasharray:1 18 1 12;animation:idleFlowStream ${cfg.flow.idleSpeed * 0.5}s linear infinite;stroke-linecap:round;filter:drop-shadow(0 0 3px currentColor) drop-shadow(0 0 6px currentColor)}
+.idle-flow-trail{stroke-dasharray:16 6 4 14;animation:idleFlowStream ${cfg.flow.idleSpeed * 1.2}s linear infinite;stroke-linecap:round}
+.idle-flow-wave{stroke-dasharray:6 3 2 3 6 20;animation:idleFlowStream ${cfg.flow.idleSpeed * 0.7}s linear infinite;stroke-linecap:round}
+.idle-flow-morse{stroke-dasharray:2 6 8 6 2 16;animation:idleFlowStream ${cfg.flow.idleSpeed}s linear infinite;stroke-linecap:round}
+.idle-flow-comet{stroke-dasharray:12 28;animation:idleFlowStream ${cfg.flow.idleSpeed * 0.6}s linear infinite;stroke-linecap:round;filter:drop-shadow(0 0 2px currentColor)}
+.idle-flow-none{stroke-dasharray:none;animation:none}
+@keyframes idleFlowPulse{0%,100%{opacity:0.4}50%{opacity:1}}
+${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle-flow-dot,.idle-flow-glow,.idle-flow-arrow,.idle-flow-diamond,.idle-flow-dash,.idle-flow-pulse,.idle-flow-ripple,.idle-flow-spark,.idle-flow-trail,.idle-flow-wave,.idle-flow-morse,.idle-flow-comet{animation-play-state:paused!important}` : ""}
 `}</style>
               <marker id="arrowIn" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#000000" /></marker>
             </defs>
@@ -3131,9 +1841,16 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
             {appSourceEdges.map(e => {
               const hi = sel ? linked.has(e.id) : false;
               const dim = sel && !hi;
-              const op = dim ? 0.02 : hi ? 0.7 : cfg.flow.opacity;
-              const w = hi ? cfg.flow.highlightWidth : cfg.flow.width;
-              const col = e.healthy ? cfg.green : cfg.red;
+              const issueDim = highlightIssues && e.status === "HEALTHY";
+              const issueBoost = highlightIssues && e.status !== "HEALTHY";
+              const statusKey = e.status === "BROKEN" ? "broken" : e.status === "WARNING" ? "warning" : "healthy";
+              const sov = cfg.flow.statusOverrides[statusKey as keyof typeof cfg.flow.statusOverrides];
+              const baseOp = sov?.opacity || cfg.flow.opacity;
+              const baseW = sov?.width || cfg.flow.width;
+              const op = dim ? 0.02 : issueDim ? 0.015 : hi ? 0.7 : issueBoost ? cfg.flow.issueBoostOpacity : baseOp;
+              const w = hi ? cfg.flow.highlightWidth : issueBoost ? cfg.flow.issueBoostWidth : baseW;
+              const defaultCol = e.status === "BROKEN" ? cfg.red : e.status === "WARNING" ? cfg.warning : cfg.green;
+              const col = sov?.color || defaultCol;
               const fo1 = focusOffsets.get(e.appId);
               const fo2 = focusOffsets.get(e.productId);
               const hasFocus = hi && (fo1 || fo2);
@@ -3155,20 +1872,28 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
                 const my = cfg.cy + midR * Math.sin(midAng);
                 focusD = `M ${x1} ${y1} Q ${mx} ${my}, ${x2} ${y2}`;
               }
-              const idleCls = `idle-flow-${cfg.flow.idleStyle}`;
-              return (<g key={e.id} style={{ transition: "opacity 0.5s ease-out", color: col }}>
+              const idleCls = `idle-flow-${sov?.idleStyle || cfg.flow.idleStyle}`;
+              const sovAnim = sov?.animation !== false;
+              return (<g key={e.id} style={{ transition: "opacity 0.5s ease-out", color: col, pointerEvents: "none" }}>
                 <path d={focusD ?? e.d} fill="none" stroke={col} strokeWidth={!sel ? 0.3 : w} opacity={!sel ? op * 0.5 : op} strokeLinecap="round" style={{ transition: "d 0.8s ease-out" }} />
-                {!sel && <path d={focusD ?? e.d} fill="none" stroke={col} strokeWidth={w + 0.5} opacity={op * 0.9} className={idleCls} style={{ animationDelay: `${(e.id.charCodeAt(0) * 13) % 3000}ms` }} />}
-                {hi && <path d={focusD ?? e.d} fill="none" stroke={col} strokeWidth={w + 0.5} opacity={0.9} className={cfg.show.flowAnimation ? "fl-fast" : "murmur-line"} style={{ transition: "d 0.8s ease-out" }} />}
+                {!sel && sovAnim && <path d={focusD ?? e.d} fill="none" stroke={col} strokeWidth={w + 0.5} opacity={op * 0.9} className={idleCls} style={{ animationDelay: `${(e.id.charCodeAt(0) * 13) % 3000}ms` }} />}
+                {hi && <path d={focusD ?? e.d} fill="none" stroke={col} strokeWidth={w + 0.5} opacity={0.9} className={cfg.show.flowAnimation && sovAnim ? "fl-fast" : "murmur-line"} style={{ transition: "d 0.8s ease-out" }} />}
               </g>);
             })}
 
             {lineageEdges.map(e => {
               const hi = sel ? linked.has(`le-${e.id}`) : false;
               const dim = sel && !hi;
-              const op = dim ? 0.02 : hi ? 0.7 : cfg.flow.opacity;
-              const w = hi ? cfg.flow.highlightWidth : cfg.flow.width;
-              const col = e.healthy ? cfg.green : cfg.red;
+              const leIssueDim = highlightIssues && e.eStatus === "HEALTHY";
+              const leStatusKey = e.eStatus === "BROKEN" ? "broken" : e.eStatus === "WARNING" ? "warning" : "healthy";
+              const leIssueBoost = highlightIssues && e.eStatus !== "HEALTHY";
+              const leSov = cfg.flow.statusOverrides[leStatusKey as keyof typeof cfg.flow.statusOverrides];
+              const leBaseOp = leSov?.opacity || cfg.flow.opacity;
+              const leBaseW = leSov?.width || cfg.flow.width;
+              const op = dim ? 0.02 : leIssueDim ? 0.015 : hi ? 0.7 : leIssueBoost ? cfg.flow.issueBoostOpacity : leBaseOp;
+              const w = hi ? cfg.flow.highlightWidth : leIssueBoost ? cfg.flow.issueBoostWidth : leBaseW;
+              const leDefaultCol = e.eStatus === "BROKEN" ? cfg.red : e.eStatus === "WARNING" ? cfg.warning : cfg.green;
+              const col = leSov?.color || leDefaultCol;
               const fo1 = focusOffsets.get(e.source);
               const fo2 = focusOffsets.get(e.target);
               const hasFocus = hi && (fo1 || fo2);
@@ -3209,11 +1934,12 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
                   focusD = `M ${x1} ${y1} Q ${mx} ${my}, ${x2} ${y2}`;
                 }
               }
-              const idleCls = `idle-flow-${cfg.flow.idleStyle}`;
-              return (<g key={e.id} style={{ transition: "opacity 0.5s ease-out", color: col }}>
+              const idleCls = `idle-flow-${leSov?.idleStyle || cfg.flow.idleStyle}`;
+              const leSovAnim = leSov?.animation !== false;
+              return (<g key={e.id} style={{ transition: "opacity 0.5s ease-out", color: col, pointerEvents: "none" }}>
                 <path d={focusD ?? e.d} fill="none" stroke={col} strokeWidth={!sel ? 0.3 : w} opacity={!sel ? op * 0.5 : op} strokeLinecap="round" style={{ transition: "d 0.8s ease-out" }} />
-                {!sel && <path d={focusD ?? e.d} fill="none" stroke={col} strokeWidth={w + 0.5} opacity={op * 0.9} className={idleCls} style={{ animationDelay: `${(e.id.length * 17) % 3000}ms` }} />}
-                {hi && <path d={focusD ?? e.d} fill="none" stroke={col} strokeWidth={w + 0.5} opacity={0.9} className={cfg.show.flowAnimation ? "fl-fast" : "murmur-line"} style={{ transition: "d 0.8s ease-out" }} />}
+                {!sel && leSovAnim && <path d={focusD ?? e.d} fill="none" stroke={col} strokeWidth={w + 0.5} opacity={op * 0.9} className={idleCls} style={{ animationDelay: `${(e.id.length * 17) % 3000}ms` }} />}
+                {hi && <path d={focusD ?? e.d} fill="none" stroke={col} strokeWidth={w + 0.5} opacity={0.9} className={cfg.show.flowAnimation && leSovAnim ? "fl-fast" : "murmur-line"} style={{ transition: "d 0.8s ease-out" }} />}
               </g>);
             })}
 
@@ -3340,6 +2066,10 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
                 <path d="M 0 24 L 28 24" fill="none" stroke={cfg.red} strokeWidth={1.5} strokeDasharray="4 3" opacity={0.7} />
                 <text x={33} y={26.5} fill={lc(lu.dataFlowLineLabelColor)} fontSize={lu.dataFlowLineLabelSize} fontWeight={400} opacity={lu.dataFlowLineLabelOpacity} style={{ cursor: "text" }}
                   onDoubleClick={e => { e.stopPropagation(); const r2 = (e.target as SVGTextElement).getBoundingClientRect(); setEditingLegendText({ cfgPath: "legendText.pipelineBroken", x: r2.left, y: r2.top, value: cfg.legendText.pipelineBroken, width: r2.width + 20 }); }}>{cfg.legendText.pipelineBroken}</text>
+                <line x1={0} x2={28} y1={36} y2={36} stroke={cfg.text} strokeWidth={0.3} opacity={0.15} />
+                <path d="M 0 36 L 28 36" fill="none" stroke={cfg.warning} strokeWidth={1.5} strokeDasharray="3 4" opacity={0.7} />
+                <text x={33} y={38.5} fill={lc(lu.dataFlowLineLabelColor)} fontSize={lu.dataFlowLineLabelSize} fontWeight={400} opacity={lu.dataFlowLineLabelOpacity} style={{ cursor: "text" }}
+                  onDoubleClick={e => { e.stopPropagation(); const r2 = (e.target as SVGTextElement).getBoundingClientRect(); setEditingLegendText({ cfgPath: "legendText.pipelineWarning", x: r2.left, y: r2.top, value: cfg.legendText.pipelineWarning, width: r2.width + 20 }); }}>{cfg.legendText.pipelineWarning}</text>
               </g>);
             })()}
 
@@ -3434,45 +2164,60 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
             })}
           </svg>
 
-          {/* Focus Mode toggle — draggable via left handle */}
-          {selProduct && (
-            <div className="absolute z-20 flex items-center bg-white/95 rounded-full shadow-md border border-gray-200 select-none group/focus"
-              style={{ left: focusTogglePos.x, bottom: -focusTogglePos.y }}
-              onClick={e => e.stopPropagation()}>
-              {/* Fast CSS tooltip */}
-              <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 opacity-0 group-hover/focus:opacity-100 transition-opacity duration-150 delay-100 z-30 whitespace-nowrap">
-                <div className="bg-gray-900 text-white text-[9px] px-2.5 py-1.5 rounded-lg shadow-lg max-w-[220px] whitespace-normal text-center leading-tight">Show only direct upstream &amp; downstream connections, hiding the full transitive lineage chain</div>
+          {/* Focus Mode & Pipeline Issues toggle bars — shared styling from cfg.toggleBars */}
+          {(() => {
+            const tb = cfg.toggleBars;
+            const barStyle: React.CSSProperties = { minWidth: tb.minWidth, background: tb.bg, border: `1px solid ${tb.borderColor}`, borderRadius: tb.borderRadius, boxShadow: tb.shadow ? "0 1px 6px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.04)" : "none" };
+            return (<>
+              <div className="absolute flex items-center select-none group/focus z-[50] hover:z-[200]"
+                style={{ ...barStyle, left: focusTogglePos.x, bottom: -focusTogglePos.y }}
+                onClick={e => e.stopPropagation()}>
+                <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 opacity-0 group-hover/focus:opacity-100 transition-opacity duration-150 delay-100 whitespace-nowrap z-[9999]">
+                  <div className="bg-gray-900 text-white text-[9px] px-2.5 py-1.5 rounded-lg shadow-lg max-w-[220px] whitespace-normal text-center leading-tight">Show only direct upstream &amp; downstream connections, hiding the full transitive lineage chain</div>
+                </div>
+                {IS_AUTHORING && <div className="shrink-0 flex items-center justify-center rounded-l-full px-1.5 py-2 touch-none"
+                  style={{ cursor: focusToggleDrag.current ? "grabbing" : "grab" }}
+                  onPointerDown={e => { e.stopPropagation(); (e.target as HTMLElement).setPointerCapture(e.pointerId); focusToggleDrag.current = { sx: e.clientX, sy: e.clientY, ox: focusTogglePos.x, oy: focusTogglePos.y }; }}
+                  onPointerMove={e => { if (!focusToggleDrag.current) return; setFocusTogglePos({ x: focusToggleDrag.current.ox + (e.clientX - focusToggleDrag.current.sx), y: focusToggleDrag.current.oy - (e.clientY - focusToggleDrag.current.sy) }); }}
+                  onPointerUp={e => { focusToggleDrag.current = null; (e.target as HTMLElement).releasePointerCapture(e.pointerId); }}>
+                  <svg className="opacity-30" width="5" height="10" viewBox="0 0 5 10"><circle cx="1" cy="1.5" r="0.9" fill="#666" /><circle cx="4" cy="1.5" r="0.9" fill="#666" /><circle cx="1" cy="5" r="0.9" fill="#666" /><circle cx="4" cy="5" r="0.9" fill="#666" /><circle cx="1" cy="8.5" r="0.9" fill="#666" /><circle cx="4" cy="8.5" r="0.9" fill="#666" /></svg>
+                </div>}
+                <div className="flex items-center gap-2 pr-3 py-1.5" style={{ cursor: "default" }}>
+                  <svg width={tb.iconSize} height={tb.iconSize} viewBox="0 0 24 24" fill="none" stroke={showUpDown ? (selProduct ? cfg.layerColors[selProduct.product_type] : selApp ? cfg.layerColors.APPS : tb.activeColor) : tb.inactiveColor} strokeWidth="2" strokeLinecap="round"><path d="M8 6l4-4 4 4M8 18l4 4 4-4M12 2v20" /></svg>
+                  <span className="font-semibold whitespace-nowrap" style={{ fontSize: tb.fontSize, color: showUpDown ? tb.activeColor : tb.inactiveColor }}>Lineage Focus Mode</span>
+                  <button onClick={() => setShowUpDown(!showUpDown)} className={`w-7 h-[16px] rounded-full cursor-pointer transition-colors relative ${showUpDown ? "bg-gray-800" : "bg-gray-200"}`}>
+                    <span className={`absolute top-[2px] w-[12px] h-[12px] rounded-full bg-white shadow transition-transform ${showUpDown ? "left-[13px]" : "left-[2px]"}`} />
+                  </button>
+                </div>
               </div>
-              {/* Drag handle — left edge only */}
-              <div className="shrink-0 flex items-center justify-center rounded-l-full px-1.5 py-2"
-                style={{ cursor: focusToggleDrag.current ? "grabbing" : "grab" }}
-                onMouseDown={e => {
-                  e.stopPropagation();
-                  focusToggleDrag.current = { sx: e.clientX, sy: e.clientY, ox: focusTogglePos.x, oy: focusTogglePos.y };
-                  const onMove = (ev: MouseEvent) => {
-                    if (!focusToggleDrag.current) return;
-                    setFocusTogglePos({ x: focusToggleDrag.current.ox + (ev.clientX - focusToggleDrag.current.sx), y: focusToggleDrag.current.oy - (ev.clientY - focusToggleDrag.current.sy) });
-                  };
-                  const onUp = () => { focusToggleDrag.current = null; window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); };
-                  window.addEventListener("mousemove", onMove);
-                  window.addEventListener("mouseup", onUp);
-                }}>
-                <svg className="opacity-30" width="5" height="10" viewBox="0 0 5 10"><circle cx="1" cy="1.5" r="0.9" fill="#666" /><circle cx="4" cy="1.5" r="0.9" fill="#666" /><circle cx="1" cy="5" r="0.9" fill="#666" /><circle cx="4" cy="5" r="0.9" fill="#666" /><circle cx="1" cy="8.5" r="0.9" fill="#666" /><circle cx="4" cy="8.5" r="0.9" fill="#666" /></svg>
-              </div>
-              {/* Content area — no drag interference */}
-              <div className="flex items-center gap-2 pr-3 py-1.5" style={{ cursor: "default" }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={showUpDown ? cfg.layerColors[selProduct.product_type] : "#999"} strokeWidth="2" strokeLinecap="round"><path d="M8 6l4-4 4 4M8 18l4 4 4-4M12 2v20" /></svg>
-                <span className="text-[10px] font-semibold whitespace-nowrap" style={{ color: showUpDown ? cfg.text : "#999" }}>Focus Mode</span>
-                <button onClick={() => setShowUpDown(!showUpDown)} className={`w-7 h-[16px] rounded-full cursor-pointer transition-colors relative ${showUpDown ? "bg-gray-800" : "bg-gray-200"}`}>
-                  <span className={`absolute top-[2px] w-[12px] h-[12px] rounded-full bg-white shadow transition-transform ${showUpDown ? "left-[13px]" : "left-[2px]"}`} />
-                </button>
-              </div>
-            </div>
-          )}
 
-          {tip && <div className="fixed z-[200] pointer-events-none" style={{ left: (tip.x + 16) / uiZoom, top: (tip.y - 8) / uiZoom, transform: "translateY(-100%)" }}><div className="bg-white rounded-xl shadow-2xl border border-gray-200 p-4 text-[11px] min-w-[220px] max-w-[280px]">{tip.content}</div></div>}
+              <div className="absolute flex items-center select-none group/issues z-[50] hover:z-[200]"
+                style={{ ...barStyle, left: issuesTogglePos.x, bottom: -issuesTogglePos.y }}
+                onClick={e => e.stopPropagation()}>
+                <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 opacity-0 group-hover/issues:opacity-100 transition-opacity duration-150 delay-100 whitespace-nowrap z-[9999]">
+                  <div className="bg-gray-900 text-white text-[9px] px-2.5 py-1.5 rounded-lg shadow-lg max-w-[220px] whitespace-normal text-center leading-tight">Dim healthy flows and visually emphasize broken &amp; warning pipelines</div>
+                </div>
+                {IS_AUTHORING && <div className="shrink-0 flex items-center justify-center rounded-l-full px-1.5 py-2 touch-none"
+                  style={{ cursor: issuesToggleDrag.current ? "grabbing" : "grab" }}
+                  onPointerDown={e => { e.stopPropagation(); (e.target as HTMLElement).setPointerCapture(e.pointerId); issuesToggleDrag.current = { sx: e.clientX, sy: e.clientY, ox: issuesTogglePos.x, oy: issuesTogglePos.y }; }}
+                  onPointerMove={e => { if (!issuesToggleDrag.current) return; setIssuesTogglePos({ x: issuesToggleDrag.current.ox + (e.clientX - issuesToggleDrag.current.sx), y: issuesToggleDrag.current.oy - (e.clientY - issuesToggleDrag.current.sy) }); }}
+                  onPointerUp={e => { issuesToggleDrag.current = null; (e.target as HTMLElement).releasePointerCapture(e.pointerId); }}>
+                  <svg className="opacity-30" width="5" height="10" viewBox="0 0 5 10"><circle cx="1" cy="1.5" r="0.9" fill="#666" /><circle cx="4" cy="1.5" r="0.9" fill="#666" /><circle cx="1" cy="5" r="0.9" fill="#666" /><circle cx="4" cy="5" r="0.9" fill="#666" /><circle cx="1" cy="8.5" r="0.9" fill="#666" /><circle cx="4" cy="8.5" r="0.9" fill="#666" /></svg>
+                </div>}
+                <div className="flex items-center gap-2 pr-3 py-1.5" style={{ cursor: "default" }}>
+                  <svg width={tb.iconSize} height={tb.iconSize} viewBox="0 0 24 24" fill="none" stroke={highlightIssues ? cfg.red : tb.inactiveColor} strokeWidth="2" strokeLinecap="round"><path d="M12 9v2m0 4h.01M5.07 19h13.86c1.33 0 2.17-1.44 1.5-2.59L13.5 4.02a1.73 1.73 0 00-3 0L3.57 16.41C2.9 17.56 3.74 19 5.07 19z" /></svg>
+                  <span className="font-semibold whitespace-nowrap" style={{ fontSize: tb.fontSize, color: highlightIssues ? tb.activeColor : tb.inactiveColor }}>Highlight Pipeline Issues</span>
+                  <button onClick={() => setHighlightIssues(!highlightIssues)} className={`w-7 h-[16px] rounded-full cursor-pointer transition-colors relative ${highlightIssues ? "bg-gray-800" : "bg-gray-200"}`}>
+                    <span className={`absolute top-[2px] w-[12px] h-[12px] rounded-full bg-white shadow transition-transform ${highlightIssues ? "left-[13px]" : "left-[2px]"}`} />
+                  </button>
+                </div>
+              </div>
+            </>);
+          })()}
 
-          {editingLegendText && (
+          {tip && <div className="fixed z-[200] pointer-events-none" style={{ left: (tip.x - (stageLeft - stageScroll.x) + 16) / uiZoom, top: (tip.y - (stageTop - stageScroll.y) - 8) / uiZoom, transform: "translateY(-100%)" }}><div className="bg-white rounded-xl shadow-2xl border border-gray-200 p-4 text-[11px] min-w-[220px] max-w-[280px]">{tip.content}</div></div>}
+
+          {IS_AUTHORING && editingLegendText && (
             <div className="absolute z-[150]" style={{ left: editingLegendText.x, top: editingLegendText.y, transform: "translate(-4px, -4px)" }}>
               <input autoFocus type="text" value={editingLegendText.value}
                 onChange={e => setEditingLegendText(p => p ? { ...p, value: e.target.value } : null)}
@@ -3484,7 +2229,7 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
           )}
 
           {/* ═══ PLAYGROUND GEAR + PANEL ═══ */}
-          <button onClick={e => { e.stopPropagation(); setPgOpen(p => !p); }}
+          {IS_AUTHORING && (<><button onClick={e => { e.stopPropagation(); setPgOpen(p => !p); }}
             className="absolute bottom-5 right-5 z-30 w-10 h-10 rounded-full bg-white shadow-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 cursor-pointer transition-transform"
             style={{ transform: pgOpen ? "rotate(60deg)" : "rotate(0deg)" }} title="Playground Controls">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -3494,7 +2239,7 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
 
           {pgOpen && (
             <div data-pg-panel className="fixed z-30 w-[300px] max-h-[65vh] overflow-y-auto bg-white rounded-2xl shadow-2xl border border-gray-200"
-              style={pgPos ? { left: pgPos.x / uiZoom, top: pgPos.y / uiZoom } : { bottom: 80, right: 20 }}
+              style={pgPos ? { left: (pgPos.x - (stageLeft - stageScroll.x)) / uiZoom, top: (pgPos.y - (stageTop - stageScroll.y)) / uiZoom } : { bottom: 80, right: 20 }}
               onClick={e => e.stopPropagation()}>
               <div className="p-4">
                 <div data-pg-handle className="flex items-center justify-between mb-3 cursor-grab active:cursor-grabbing select-none" onMouseDown={onPgDragStart}>
@@ -3549,6 +2294,21 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
                 </button>
                 {pgSections.display && (
                   <div className="mb-3 pb-3 border-b border-gray-100">
+                    <div className="text-[9px] font-semibold text-gray-400 uppercase mb-1.5">Screen Fit</div>
+                    <p className="text-[8px] text-gray-400 mb-1.5 leading-snug">
+                      Tunes the whole dashboard stage for your screen while keeping chart coordinates and spacing fixed.
+                      Values above `1.0` zoom from the current fit size; on smaller screens the dashboard will scroll instead of ignoring the setting.
+                    </p>
+                    <SliderRow
+                      label="Dashboard Scale"
+                      value={cfg.stageScaleFactor ?? 1}
+                      min={0.7}
+                      max={1.5}
+                      step={0.01}
+                      inputStep={0.01}
+                      unit="x"
+                      onChange={v => updateCfg("stageScaleFactor", v)}
+                    />
                     <div className="text-[9px] font-semibold text-gray-400 uppercase mb-1.5">Show / Hide</div>
                     <ToggleRow label="Product Labels" value={cfg.show.productLabels} onChange={v => updateCfg("show.productLabels", v)} />
                     <ToggleRow label="Smart Labels" value={cfg.show.smartLabels} onChange={v => updateCfg("show.smartLabels", v)} />
@@ -3559,6 +2319,34 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
                     <ToggleRow label="Arc Bands" value={cfg.show.arcBands} onChange={v => updateCfg("show.arcBands", v)} />
                     <ToggleRow label="Flow Animation" value={cfg.show.flowAnimation} onChange={v => updateCfg("show.flowAnimation", v)} />
                     <ToggleRow label="Search Bar" value={cfg.show.searchBar} onChange={v => updateCfg("show.searchBar", v)} />
+                    {cfg.show.searchBar && (
+                      <>
+                        <div className="text-[9px] font-semibold text-gray-400 uppercase mt-2 mb-1.5">Search Bar Layout</div>
+                        <p className="text-[8px] text-gray-400 mb-1.5 leading-snug">
+                          With the playground open, drag from the space just above the search bar, or tune exact size, position, and visual style here.
+                        </p>
+                        <SliderRow label="X Offset" value={cfg.searchBarUi.x} min={-500} max={500} step={1} inputStep={1} onChange={v => updateCfg("searchBarUi.x", v)} unit="px" />
+                        <SliderRow label="Y Offset" value={cfg.searchBarUi.y} min={-180} max={240} step={1} inputStep={1} onChange={v => updateCfg("searchBarUi.y", v)} unit="px" />
+                        <SliderRow label="Width" value={cfg.searchBarUi.width} min={220} max={620} step={2} inputStep={1} onChange={v => updateCfg("searchBarUi.width", v)} unit="px" />
+                        <SliderRow label="Height" value={cfg.searchBarUi.height} min={30} max={64} step={1} inputStep={1} onChange={v => updateCfg("searchBarUi.height", v)} unit="px" />
+                        <SliderRow label="Corner Radius" value={cfg.searchBarUi.radius} min={4} max={999} step={1} inputStep={1} onChange={v => updateCfg("searchBarUi.radius", v)} unit="px" />
+                        <SliderRow label="Font Size" value={cfg.searchBarUi.fontSize} min={9} max={18} step={0.5} inputStep={0.5} onChange={v => updateCfg("searchBarUi.fontSize", v)} unit="px" />
+                        <SliderRow label="Shadow Opacity" value={cfg.searchBarUi.shadow} min={0} max={0.4} step={0.01} inputStep={0.01} onChange={v => updateCfg("searchBarUi.shadow", v)} />
+                        <ColorRow label="Background" value={cfg.searchBarUi.bg} onChange={v => updateCfg("searchBarUi.bg", v)} />
+                        <ColorRow label="Border" value={cfg.searchBarUi.border} onChange={v => updateCfg("searchBarUi.border", v)} />
+                        <ColorRow label="Text" value={cfg.searchBarUi.text} onChange={v => updateCfg("searchBarUi.text", v)} />
+                        <ColorRow label="Icon / Accent" value={cfg.searchBarUi.icon} onChange={v => updateCfg("searchBarUi.icon", v)} />
+                      </>
+                    )}
+                    <div className="text-[9px] font-semibold text-gray-400 uppercase mt-3 mb-1.5">Tab Dock</div>
+                    <ColorRow label="Dock Background" value={cfg.tabDock.bg} onChange={v => updateCfg("tabDock.bg", v)} />
+                    <ColorRow label="Active Circle" value={cfg.tabDock.activeColor} onChange={v => updateCfg("tabDock.activeColor", v)} />
+                    <ColorRow label="Inactive Circle" value={cfg.tabDock.inactiveColor} onChange={v => updateCfg("tabDock.inactiveColor", v)} />
+                    <ColorRow label="Text (Active)" value={cfg.tabDock.textActive} onChange={v => updateCfg("tabDock.textActive", v)} />
+                    <ColorRow label="Text (Inactive)" value={cfg.tabDock.textInactive} onChange={v => updateCfg("tabDock.textInactive", v)} />
+                    <SliderRow label="Circle Size" value={cfg.tabDock.circleSize} min={28} max={56} step={1} inputStep={1} onChange={v => updateCfg("tabDock.circleSize", v)} unit="px" />
+                    <SliderRow label="Icon Size" value={cfg.tabDock.iconSize} min={10} max={24} step={1} inputStep={1} onChange={v => updateCfg("tabDock.iconSize", v)} unit="px" />
+                    <SliderRow label="Gap" value={cfg.tabDock.gap} min={0} max={16} step={1} inputStep={1} onChange={v => updateCfg("tabDock.gap", v)} unit="px" />
                     <div className="text-[9px] font-semibold text-gray-400 uppercase mt-3 mb-1.5">Animation</div>
                     <ToggleRow label="Pause All Animations" value={cfg.animationPaused ?? false} onChange={v => updateCfg("animationPaused", v)} />
                     <div className="text-[9px] font-semibold text-gray-400 uppercase mt-3 mb-1.5">Separators</div>
@@ -3573,18 +2361,46 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
                     <SliderRow label="Line Width" value={cfg.flow.width} min={0.1} max={12} step={0.1} onChange={v => updateCfg("flow.width", v)} unit="px" />
                     <SliderRow label="Opacity" value={cfg.flow.opacity} min={0.01} max={1} step={0.01} onChange={v => updateCfg("flow.opacity", v)} />
                     <SliderRow label="Highlight Width" value={cfg.flow.highlightWidth} min={0.5} max={12} step={0.5} onChange={v => updateCfg("flow.highlightWidth", v)} unit="px" />
+                    <div className="text-[9px] font-semibold text-gray-400 uppercase mt-3 mb-1.5">Issue Highlight</div>
+                    <SliderRow label="Boost Opacity" value={cfg.flow.issueBoostOpacity} min={0.05} max={1} step={0.05} onChange={v => updateCfg("flow.issueBoostOpacity", v)} />
+                    <SliderRow label="Boost Width" value={cfg.flow.issueBoostWidth} min={0.3} max={8} step={0.1} onChange={v => updateCfg("flow.issueBoostWidth", v)} unit="px" />
                     <SliderRow label="Curve Tension" value={cfg.flow.curveTension} min={0} max={1} step={0.05} onChange={v => updateCfg("flow.curveTension", v)} />
                     <div className="text-[9px] font-semibold text-gray-400 uppercase mt-3 mb-1.5">Idle Animation</div>
                     <div className="flex items-center gap-1.5 mb-2">
                       <span className="text-[10px] text-gray-500 w-[52px] shrink-0">Style</span>
                       <div className="flex gap-1 flex-wrap">
-                        {(["dot", "glow", "arrow", "diamond", "dash"] as const).map(s => (
+                        {(["dot", "glow", "arrow", "diamond", "dash", "pulse", "ripple", "spark", "trail", "wave", "morse", "comet", "none"] as const).map(s => (
                           <button key={s} onClick={() => updateCfg("flow.idleStyle", s)}
                             className={`px-2 py-0.5 rounded text-[9px] font-medium cursor-pointer transition-colors ${cfg.flow.idleStyle === s ? "bg-gray-800 text-white" : "bg-gray-100 text-gray-500 hover:bg-gray-200"}`}>{s}</button>
                         ))}
                       </div>
                     </div>
                     <SliderRow label="Speed" value={cfg.flow.idleSpeed} min={1} max={10} step={0.5} onChange={v => updateCfg("flow.idleSpeed", v)} unit="s" />
+                    {(["healthy", "broken", "warning"] as const).map(sk => {
+                      const so = cfg.flow.statusOverrides[sk];
+                      const defCol = sk === "healthy" ? cfg.green : sk === "broken" ? cfg.red : cfg.warning;
+                      return (
+                        <div key={sk}>
+                          <div className="text-[9px] font-semibold text-gray-400 uppercase mt-3 mb-1.5 flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full" style={{ background: so?.color || defCol }} />{sk.charAt(0).toUpperCase() + sk.slice(1)} Flow
+                          </div>
+                          <ColorRow label="Color" value={so?.color || ""} onChange={v => updateCfg(`flow.statusOverrides.${sk}.color`, v)} />
+                          <SliderRow label="Width" value={so?.width || 0} min={0} max={12} step={0.1} onChange={v => updateCfg(`flow.statusOverrides.${sk}.width`, v)} unit="px" />
+                          <SliderRow label="Opacity" value={so?.opacity || 0} min={0} max={1} step={0.01} onChange={v => updateCfg(`flow.statusOverrides.${sk}.opacity`, v)} />
+                          <ToggleRow label="Animation" value={so?.animation !== false} onChange={v => updateCfg(`flow.statusOverrides.${sk}.animation`, v)} />
+                          <div className="flex items-center gap-1.5 mt-1">
+                            <span className="text-[10px] text-gray-500 w-[52px] shrink-0">Style</span>
+                            <div className="flex gap-1 flex-wrap">
+                              {(["", "dot", "glow", "arrow", "diamond", "dash", "pulse", "ripple", "spark", "trail", "wave", "morse", "comet", "none"] as const).map(s => (
+                                <button key={s} onClick={() => updateCfg(`flow.statusOverrides.${sk}.idleStyle`, s)}
+                                  className={`px-1.5 py-0.5 rounded text-[8px] font-medium cursor-pointer transition-colors ${(so?.idleStyle || "") === s ? "bg-gray-800 text-white" : "bg-gray-100 text-gray-500 hover:bg-gray-200"}`}>{s || "global"}</button>
+                              ))}
+                            </div>
+                          </div>
+                          <p className="text-[8px] text-gray-400 mt-0.5 leading-snug">0 / empty = use global default</p>
+                        </div>
+                      );
+                    })}
                     <div className="text-[9px] font-semibold text-gray-400 uppercase mt-3 mb-1.5">Data Flow Arrow</div>
                     <p className="text-[8px] text-gray-400 mb-1.5 leading-snug">Arrow stroke, head, and label render in solid black on the mesh. Drag the arrow on the canvas to offset.</p>
                     <SliderRow label="Group Opacity" value={cfg.legendUi.dataFlowArrowOpacity} min={0.05} max={1} step={0.05} onChange={v => updateCfg("legendUi.dataFlowArrowOpacity", v)} inputStep={0.01} />
@@ -3593,6 +2409,27 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
                     <SliderRow label="Y Offset" value={cfg.arrowY} min={-200} max={200} step={5} onChange={v => updateCfg("arrowY", v)} unit="px" inputStep={1} />
                     <SliderRow label="Length" value={cfg.arrowLength ?? 1} min={0.2} max={2} step={0.05} onChange={v => updateCfg("arrowLength", v)} inputStep={0.01} />
                     <SliderRow label="Rotation" value={cfg.arrowRotation} min={-180} max={180} step={1} onChange={v => updateCfg("arrowRotation", v)} unit={"°"} />
+                  </div>
+                )}
+
+                <button onClick={() => toggleSection("toggleBars")} className="flex items-center justify-between w-full text-left py-1.5 mb-1 cursor-pointer">
+                  <span className="text-[11px] font-bold text-gray-600 uppercase tracking-wider">Toggle Bars</span>
+                  <span className="text-gray-400 text-[12px]">{pgSections.toggleBars ? "\u2212" : "+"}</span>
+                </button>
+                {pgSections.toggleBars && (
+                  <div className="mb-3 pb-3 border-b border-gray-100">
+                    <p className="text-[8px] text-gray-400 mb-1.5 leading-snug">
+                      Controls for the Lineage Focus Mode and Highlight Pipeline Issues toggle bars.
+                    </p>
+                    <SliderRow label="Min Width" value={cfg.toggleBars.minWidth} min={140} max={320} step={2} inputStep={1} onChange={v => updateCfg("toggleBars.minWidth", v)} unit="px" />
+                    <SliderRow label="Font Size" value={cfg.toggleBars.fontSize} min={8} max={14} step={0.5} inputStep={0.5} onChange={v => updateCfg("toggleBars.fontSize", v)} unit="px" />
+                    <SliderRow label="Icon Size" value={cfg.toggleBars.iconSize} min={10} max={22} step={1} inputStep={1} onChange={v => updateCfg("toggleBars.iconSize", v)} unit="px" />
+                    <SliderRow label="Border Radius" value={cfg.toggleBars.borderRadius} min={4} max={9999} step={1} inputStep={1} onChange={v => updateCfg("toggleBars.borderRadius", v)} unit="px" />
+                    <ColorRow label="Background" value={cfg.toggleBars.bg} onChange={v => updateCfg("toggleBars.bg", v)} />
+                    <ColorRow label="Border Color" value={cfg.toggleBars.borderColor} onChange={v => updateCfg("toggleBars.borderColor", v)} />
+                    <ColorRow label="Active Color" value={cfg.toggleBars.activeColor} onChange={v => updateCfg("toggleBars.activeColor", v)} />
+                    <ColorRow label="Inactive Color" value={cfg.toggleBars.inactiveColor} onChange={v => updateCfg("toggleBars.inactiveColor", v)} />
+                    <ToggleRow label="Drop Shadow" value={cfg.toggleBars.shadow} onChange={v => updateCfg("toggleBars.shadow", v)} />
                   </div>
                 )}
 
@@ -4356,6 +3193,7 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
                     <div className="text-[9px] font-semibold text-gray-400 uppercase mt-2 mb-1.5">Pipelines</div>
                     <ColorRow label="Healthy" value={cfg.green} onChange={v => updateCfg("green", v)} />
                     <ColorRow label="Broken" value={cfg.red} onChange={v => updateCfg("red", v)} />
+                    <ColorRow label="Warning" value={cfg.warning} onChange={v => updateCfg("warning", v)} />
                     <div className="text-[9px] font-semibold text-gray-400 uppercase mt-2 mb-1.5">General</div>
                     <ColorRow label="Text" value={cfg.text} onChange={v => updateCfg("text", v)} />
                     <ColorRow label="Background" value={cfg.bg} onChange={v => updateCfg("bg", v)} />
@@ -4474,12 +3312,15 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
                     <SliderRow label="Line Width" value={cfg.flow.width} min={0.1} max={12} step={0.1} onChange={v => updateCfg("flow.width", v)} unit="px" />
                     <SliderRow label="Opacity" value={cfg.flow.opacity} min={0.01} max={1} step={0.01} onChange={v => updateCfg("flow.opacity", v)} />
                     <SliderRow label="Highlight Width" value={cfg.flow.highlightWidth} min={0.5} max={12} step={0.5} onChange={v => updateCfg("flow.highlightWidth", v)} unit="px" />
+                    <div className="text-[9px] font-semibold text-gray-400 uppercase mt-3 mb-1.5">Issue Highlight</div>
+                    <SliderRow label="Boost Opacity" value={cfg.flow.issueBoostOpacity} min={0.05} max={1} step={0.05} onChange={v => updateCfg("flow.issueBoostOpacity", v)} />
+                    <SliderRow label="Boost Width" value={cfg.flow.issueBoostWidth} min={0.3} max={8} step={0.1} onChange={v => updateCfg("flow.issueBoostWidth", v)} unit="px" />
                     <SliderRow label="Curve Tension" value={cfg.flow.curveTension} min={0} max={1} step={0.05} onChange={v => updateCfg("flow.curveTension", v)} />
                     <div className="text-[9px] font-semibold text-gray-400 uppercase mt-3 mb-1.5">Idle Animation</div>
                     <div className="flex items-center gap-1.5 mb-2">
                       <span className="text-[10px] text-gray-500 w-[52px] shrink-0">Style</span>
                       <div className="flex gap-1 flex-wrap">
-                        {(["dot", "glow", "arrow", "diamond", "dash"] as const).map(s => (
+                        {(["dot", "glow", "arrow", "diamond", "dash", "pulse", "ripple", "spark", "trail", "wave", "morse", "comet", "none"] as const).map(s => (
                           <button key={s} onClick={() => updateCfg("flow.idleStyle", s)}
                             className={`px-2 py-0.5 rounded text-[9px] font-medium cursor-pointer transition-colors ${cfg.flow.idleStyle === s ? "bg-gray-800 text-white" : "bg-gray-100 text-gray-500 hover:bg-gray-200"}`}>{s}</button>
                         ))}
@@ -4621,6 +3462,7 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
               </div>
             </div>
           )}
+          </>)}
         </div>
 
         {/* ═══ RIGHT PANEL (420px, always-tabbed) ═══ */}
@@ -4633,21 +3475,143 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
           if (g.type === "radial") return `radial-gradient(ellipse at center, ${c1} 0%, ${c2} ${g.midStop}%, ${c3} 100%)`;
           return `linear-gradient(${g.angle}deg, ${c1} 0%, ${c2} ${g.midStop}%, ${c3} 100%)`;
         })(), border: `${bdr.width}px solid ${bdr.color}`, borderRadius: `0 ${bdr.radius}px ${bdr.radius}px 0` }}>
-          {/* Tab bar */}
-          <div className="flex border-b border-gray-100 shrink-0 pt-1">
-            {PANEL_TABS.map(tab => (
-              <button key={tab.id} onClick={() => setPanelTab(tab.id)}
-                className={`flex-1 py-2.5 text-center cursor-pointer transition-colors ${panelTab === tab.id ? "border-b-2 border-gray-800" : "hover:bg-gray-50"}`}>
-                <svg className="w-4 h-4 mx-auto mb-0.5" viewBox="0 0 24 24" fill="none" stroke={panelTab === tab.id ? cfg.text : "#9ca3af"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={tab.icon} /></svg>
-                <span className={`text-[9px] font-bold uppercase tracking-wider ${panelTab === tab.id ? "text-gray-800" : "text-gray-400"}`}>{tab.label}</span>
-              </button>
-            ))}
+          {/* Tab bar — circular dock (playground-configurable) */}
+          {(() => { const td = cfg.tabDock; return (
+          <div className="shrink-0 mx-3 mt-3 mb-1 rounded-2xl px-2 py-2.5 shadow-[inset_0_1px_3px_rgba(0,0,0,0.04)]" style={{ backgroundColor: td.bg }}>
+            <div className="flex justify-between" style={{ gap: td.gap }}>
+              {PANEL_TABS.map(tab => {
+                const active = panelTab === tab.id;
+                return (
+                  <button key={tab.id} onClick={() => setPanelTab(tab.id)}
+                    className="flex flex-col items-center cursor-pointer group"
+                    style={{ minWidth: 0, flex: "1 1 0%", gap: Math.max(td.gap * 0.4, 3) }}>
+                    <div
+                      className={`rounded-full flex items-center justify-center transition-all duration-200 ${
+                        active ? "shadow-[0_4px_12px_rgba(0,0,0,0.25)] scale-105" : "shadow-[0_1px_3px_rgba(0,0,0,0.08)] group-hover:shadow-[0_3px_10px_rgba(0,0,0,0.12)] group-hover:scale-105"
+                      }`}
+                      style={{ width: td.circleSize, height: td.circleSize, backgroundColor: active ? td.activeColor : td.inactiveColor, color: active ? "#fff" : td.textInactive }}>
+                      <svg style={{ width: td.iconSize, height: td.iconSize }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={tab.icon} /></svg>
+                    </div>
+                    <span className="text-[8px] font-bold uppercase tracking-wide leading-none" style={{ color: active ? td.textActive : td.textInactive }}>{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
+          ); })()}
 
           <div className="p-5 flex-1 overflow-y-auto">
 
+            {/* ── APP SELECTED: shared panel across all tabs ── */}
+            {selApp && (() => {
+              const appStatusCol = selApp.conn_status === "ACTIVE" ? cfg.green : selApp.conn_status === "BROKEN" ? cfg.red : cfg.warning;
+              const connectedProducts = appSourceEdges.filter(e => e.appId === selApp.id).map(e => pNodes.find(n => n.id === e.productId)).filter(Boolean);
+              const appSyncLogs = (recentSyncLogs as any[]).filter((sl: any) => sl.app_id === selApp.id).slice(0, 5);
+              const appHealth = (connectionHealth as any[]).find((ch: any) => ch.app_id === selApp.id);
+
+              const AppHeader = () => (
+                <div>
+                  <button onClick={() => setSel(null)} className="text-[10px] font-medium text-gray-400 hover:text-gray-700 flex items-center gap-1 cursor-pointer mb-2"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 18l-6-6 6-6" /></svg>Clear selection</button>
+                  <div className="flex items-center gap-2 mb-1"><span className="w-3 h-3 rounded-full shrink-0" style={{ background: selApp.color_hex }} /><h2 className="text-[14px] font-bold truncate" style={{ color: cfg.text }}>{selApp.name}</h2><span className="px-1.5 py-0.5 rounded text-[8px] font-bold" style={{ background: (cfg.appTypeColors[selApp.app_type] || "#999") + "22", color: cfg.appTypeColors[selApp.app_type] || "#999" }}>{selApp.app_type}</span></div>
+                  <div className="text-[10px] text-gray-500 mb-3">{selApp.vendor} · {selApp.domain_name}</div>
+                  <div className="grid grid-cols-3 gap-2 mb-4">
+                    <div className="rounded-xl p-2.5 bg-gray-50 text-center"><div className="flex items-center justify-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: appStatusCol }} /><span className="text-[11px] font-bold" style={{ color: appStatusCol }}>{selApp.conn_status}</span></div><div className="text-[7px] font-semibold text-gray-400 uppercase mt-0.5">Status</div></div>
+                    <div className="rounded-xl p-2.5 bg-gray-50 text-center"><div className="text-[13px] font-bold" style={{ color: cfg.layerColors.CONSUMER_ALIGNED }}>${selApp.monthly_cost_usd}</div><div className="text-[7px] font-semibold text-gray-400 uppercase mt-0.5">Cost/mo</div></div>
+                    <div className="rounded-xl p-2.5 bg-gray-50 text-center"><div className="text-[11px] font-bold" style={{ color: cfg.text }}>{selApp.sync_frequency}</div><div className="text-[7px] font-semibold text-gray-400 uppercase mt-0.5">Sync</div></div>
+                  </div>
+                  {selApp.description && <p className="text-[11px] text-gray-600 leading-[1.7] mb-4 pb-4 border-b border-gray-100">{selApp.description}</p>}
+                </div>
+              );
+              const ConnectedProducts = () => connectedProducts.length > 0 ? (
+                <div className="mt-3">
+                  <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Connected Source Products</div>
+                  <div className="space-y-1">
+                    {connectedProducts.map(prod => prod ? <button key={prod.id} onClick={ev => { ev.stopPropagation(); setSel({ kind: "product", id: prod.id }); }} className="flex items-center gap-2 w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-gray-50 cursor-pointer"><span className="w-2 h-2 rounded-full shrink-0" style={{ background: cfg.layerColors.SOURCE_ALIGNED }} /><span className="text-[10px] font-medium" style={{ color: cfg.text }}>{prod.label}</span><span className="text-[8px] text-gray-400 ml-auto">Source</span></button> : null)}
+                  </div>
+                </div>
+              ) : null;
+
+              if (panelTab === "overview" || panelTab === "catalogue") {
+                return (<div><AppHeader /><ConnectedProducts /></div>);
+              }
+              if (panelTab === "cost") {
+                return (<div><AppHeader /></div>);
+              }
+              if (panelTab === "pipeline") {
+                return (
+                  <div>
+                    <AppHeader />
+                    <div className="rounded-xl p-3 mb-3" style={{ background: appStatusCol + "08", border: `1px solid ${appStatusCol}18` }}>
+                      <div className="flex items-center gap-2 mb-1"><span className="w-2.5 h-2.5 rounded-full" style={{ background: appStatusCol }} /><span className="text-[11px] font-bold" style={{ color: appStatusCol }}>Connector {selApp.conn_status}</span></div>
+                      <div className="text-[10px] text-gray-500">Sync frequency: {selApp.sync_frequency} · Rows/sync: {selApp.rows_per_sync_avg?.toLocaleString() || "—"}</div>
+                      {appHealth && <div className="text-[10px] text-gray-500 mt-0.5">Last success: {appHealth.last_success_at || "—"} · Avg latency: {appHealth.avg_latency_sec ? `${appHealth.avg_latency_sec.toFixed(1)}s` : "—"}{appHealth.failure_streak > 0 ? ` · Failure streak: ${appHealth.failure_streak}` : ""}</div>}
+                    </div>
+                    {appSyncLogs.length > 0 && (
+                      <div>
+                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Recent Sync Logs</div>
+                        <div className="space-y-1.5">
+                          {appSyncLogs.map((sl: any, i: number) => {
+                            const slCol = sl.event_type === "ERROR" ? cfg.red : sl.event_type === "WARNING" ? cfg.warning : cfg.green;
+                            return (
+                              <div key={sl.id || i} className="rounded-lg px-2.5 py-2" style={{ background: slCol + "06", border: `1px solid ${slCol}12` }}>
+                                <div className="flex items-center gap-1.5 mb-0.5">
+                                  <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: slCol }} />
+                                  <span className="text-[9px] font-bold uppercase" style={{ color: slCol }}>{sl.event_type}</span>
+                                  <span className="text-[8px] text-gray-400 ml-auto">{sl.started_at?.slice(0, 16) || "—"}</span>
+                                </div>
+                                <div className="text-[9px] text-gray-600 leading-[1.5] break-words">{sl.message?.slice(0, 200) || "—"}</div>
+                                {sl.rows_synced > 0 && <div className="text-[8px] text-gray-400 mt-0.5">{sl.rows_synced.toLocaleString()} rows · {sl.duration_sec?.toFixed(1)}s</div>}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                    <ConnectedProducts />
+                  </div>
+                );
+              }
+              if (panelTab === "quality") {
+                return (
+                  <div>
+                    <AppHeader />
+                    <div className="rounded-xl p-3 mb-3 bg-gray-50">
+                      <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Connector Health</div>
+                      {appHealth ? (
+                        <div className="grid grid-cols-2 gap-2">
+                          <div><span className="text-[10px] font-semibold text-gray-500">Status</span><div className="text-[12px] font-bold" style={{ color: appHealth.status === "HEALTHY" ? cfg.green : appHealth.status === "DOWN" ? cfg.red : cfg.warning }}>{appHealth.status}</div></div>
+                          <div><span className="text-[10px] font-semibold text-gray-500">Latency</span><div className="text-[12px] font-bold" style={{ color: cfg.text }}>{appHealth.avg_latency_sec?.toFixed(1) || "—"}s</div></div>
+                          <div><span className="text-[10px] font-semibold text-gray-500">Failure streak</span><div className="text-[12px] font-bold" style={{ color: appHealth.failure_streak > 0 ? cfg.red : cfg.green }}>{appHealth.failure_streak}</div></div>
+                          <div><span className="text-[10px] font-semibold text-gray-500">Last success</span><div className="text-[10px] font-bold" style={{ color: cfg.text }}>{appHealth.last_success_at?.slice(0, 16) || "—"}</div></div>
+                        </div>
+                      ) : <div className="text-[10px] text-gray-400">No health data available</div>}
+                    </div>
+                    {appSyncLogs.length > 0 && (
+                      <div>
+                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Last 5 Sync Metrics</div>
+                        <div className="overflow-y-auto rounded-lg" style={{ border: "1px solid #e5e7eb" }}>
+                          <table className="w-full" style={{ tableLayout: "fixed" }}>
+                            <thead><tr>{["Time", "Type", "Rows", "Duration"].map(h => <th key={h} className="px-1.5 py-1 text-left text-[8px] font-bold text-gray-400 uppercase bg-gray-50 border-b border-gray-200">{h}</th>)}</tr></thead>
+                            <tbody>{appSyncLogs.map((sl: any, i: number) => (
+                              <tr key={sl.id || i} style={{ borderBottom: "1px solid #f3f4f6" }}>
+                                <td className="px-1.5 py-1 text-[9px] text-gray-600">{sl.started_at?.slice(5, 16) || "—"}</td>
+                                <td className="px-1.5 py-1"><span className="text-[8px] font-bold" style={{ color: sl.event_type === "ERROR" ? cfg.red : sl.event_type === "WARNING" ? cfg.warning : cfg.green }}>{sl.event_type}</span></td>
+                                <td className="px-1.5 py-1 text-[9px] text-gray-600">{sl.rows_synced > 0 ? sl.rows_synced.toLocaleString() : "—"}</td>
+                                <td className="px-1.5 py-1 text-[9px] text-gray-600">{sl.duration_sec ? `${sl.duration_sec.toFixed(1)}s` : "—"}</td>
+                              </tr>
+                            ))}</tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+              return (<div><AppHeader /><ConnectedProducts /></div>);
+            })()}
+
             {/* ── TAB: OVERVIEW ── */}
-            {panelTab === "overview" && (() => {
+            {panelTab === "overview" && !selApp && (() => {
               const srcCount = products.filter((p: any) => p.product_type === "SOURCE_ALIGNED").length;
               const bizCount = products.filter((p: any) => p.product_type === "BUSINESS").length;
               const conCount = products.filter((p: any) => p.product_type === "CONSUMER_ALIGNED").length;
@@ -4681,7 +3645,7 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
 
               if (selProduct) {
                 const st = qualityToStars(selProduct.quality_score || 0);
-                const qPct = Math.round(selProduct.quality_score * 100);
+                const qPct = Math.round((selProduct.quality_score ?? 0) * 100);
                 const layerCol = cfg.layerColors[selProduct.product_type] || cfg.layerColors.SOURCE_ALIGNED;
                 const os = cfg.overviewPanel;
                 const ovSelCardStyle: React.CSSProperties = { background: os.selCardBg, border: `1px solid ${os.selCardBorder}`, borderRadius: os.selCardRadius };
@@ -4763,26 +3727,7 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
                   </div>
                 );
               }
-              if (selApp) {
-                return (
-                  <div>
-                    <button onClick={() => setSel(null)} className="text-[10px] font-medium text-gray-400 hover:text-gray-700 flex items-center gap-1 cursor-pointer mb-2"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 18l-6-6 6-6" /></svg>Clear selection</button>
-                    <div className="flex items-center gap-2 mb-1"><span className="w-3 h-3 rounded-full shrink-0" style={{ background: selApp.color_hex }} /><h2 className="text-[14px] font-bold truncate" style={{ color: cfg.text }}>{selApp.name}</h2><span className="px-1.5 py-0.5 rounded text-[8px] font-bold" style={{ background: (cfg.appTypeColors[selApp.app_type] || "#999") + "22", color: cfg.appTypeColors[selApp.app_type] || "#999" }}>{selApp.app_type}</span></div>
-                    <div className="text-[10px] text-gray-500 mb-3">{selApp.vendor} · {selApp.domain_name}</div>
-                    <div className="grid grid-cols-3 gap-2 mb-4">
-                      <div className="rounded-xl p-2.5 bg-gray-50 text-center"><div className="flex items-center justify-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: selApp.conn_status === "ACTIVE" ? cfg.green : selApp.conn_status === "BROKEN" ? cfg.red : "#9ca3af" }} /><span className="text-[11px] font-bold" style={{ color: selApp.conn_status === "ACTIVE" ? cfg.green : selApp.conn_status === "BROKEN" ? cfg.red : "#9ca3af" }}>{selApp.conn_status}</span></div><div className="text-[7px] font-semibold text-gray-400 uppercase mt-0.5">Status</div></div>
-                      <div className="rounded-xl p-2.5 bg-gray-50 text-center"><div className="text-[13px] font-bold" style={{ color: cfg.layerColors.CONSUMER_ALIGNED }}>${selApp.monthly_cost_usd}</div><div className="text-[7px] font-semibold text-gray-400 uppercase mt-0.5">Cost/mo</div></div>
-                      <div className="rounded-xl p-2.5 bg-gray-50 text-center"><div className="text-[11px] font-bold" style={{ color: cfg.text }}>{selApp.sync_frequency}</div><div className="text-[7px] font-semibold text-gray-400 uppercase mt-0.5">Sync</div></div>
-                    </div>
-                    {selApp.description && <p className="text-[11px] text-gray-600 leading-[1.7] mb-4 pb-4 border-b border-gray-100">{selApp.description}</p>}
-                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Lineage Chain</div>
-                    <div className="space-y-1">
-                      {appSourceEdges.filter(e => e.appId === selApp.id).map(e => { const prod = pNodes.find(n => n.id === e.productId); return prod ? <button key={prod.id} onClick={ev => { ev.stopPropagation(); setSel({ kind: "product", id: prod.id }); }} className="flex items-center gap-2 w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-gray-50 cursor-pointer"><span className="w-2 h-2 rounded-full shrink-0" style={{ background: cfg.layerColors.SOURCE_ALIGNED }} /><span className="text-[10px] font-medium" style={{ color: cfg.text }}>{prod.label}</span><span className="text-[8px] text-gray-400 ml-auto">Source</span></button> : null; })}
-                      {[...linked].filter(id => { const n = pMap.get(id); return n && (n.productType === "BUSINESS" || n.productType === "CONSUMER_ALIGNED"); }).map(id => { const node = pMap.get(id)!; return <button key={node.id} onClick={ev => { ev.stopPropagation(); setSel({ kind: "product", id: node.id }); }} className="flex items-center gap-2 w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-gray-50 cursor-pointer"><span className="w-2 h-2 rounded-full shrink-0" style={{ background: cfg.layerColors[node.productType] }} /><span className="text-[10px] font-medium" style={{ color: cfg.text }}>{node.label}</span><span className="text-[8px] text-gray-400 ml-auto">{LAYER_SHORT[node.productType]}</span></button>; })}
-                    </div>
-                  </div>
-                );
-              }
+              /* selApp is handled by the shared app panel block above all tabs */
 
               const ov = cfg.overviewPanel;
               const cardStyle: React.CSSProperties = {
@@ -4915,7 +3860,12 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
 
               const appDotColor = (app: any) => {
                 const isBroken = app.conn_status === "BROKEN";
-                return { fill: isBroken ? cfg.red : cfg.text, opacity: isBroken ? 0.3 : ov.dotActiveOpacity, stroke: isBroken ? cfg.red : "none", strokeW: isBroken ? 1.2 : 0 };
+                const isPaused = app.conn_status === "PAUSED";
+                return isBroken
+                  ? { fill: cfg.red, opacity: 0.3, stroke: cfg.red, strokeW: 1.2 }
+                  : isPaused
+                  ? { fill: cfg.warning, opacity: 0.3, stroke: cfg.warning, strokeW: 1.2 }
+                  : { fill: cfg.text, opacity: ov.dotActiveOpacity, stroke: "none", strokeW: 0 };
               };
 
               const productDotColor = (layerColor: string) => (prod: any) => {
@@ -5017,7 +3967,7 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
             })()}
 
             {/* ── TAB: DATA QUALITY ── */}
-            {panelTab === "quality" && (() => {
+            {panelTab === "quality" && !selApp && (() => {
               const qp = cfg.qualityPanel;
               const wStyle: React.CSSProperties = { background: qp.widgetBg, border: `1px solid ${qp.widgetBorder}`, borderRadius: qp.widgetRadius };
 
@@ -5203,68 +4153,82 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
             })()}
 
             {/* ── TAB: PIPELINE ── */}
-            {panelTab === "pipeline" && (() => {
+            {panelTab === "pipeline" && !selApp && (() => {
               const pp = cfg.pipelinePanel;
               const wStyle: React.CSSProperties = { background: pp.widgetBg, border: `1px solid ${pp.widgetBorder}`, borderRadius: pp.widgetRadius };
 
-              const seededR = (seed: number) => { let s = seed; return () => { s = (s * 16807 + 0) % 2147483647; return (s & 0x7fffffff) / 2147483647; }; };
-              const toSnake = (n: string) => n.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
-              const durations = ["4s", "8s", "12s", "22s", "38s", "1m 05s", "1m 42s", "2m 30s", "3m 15s", "5m 08s", "8m 22s"];
-              const rowCounts = ["2.1K", "8.4K", "24K", "48K", "128K", "340K", "680K", "1.2M", "2.4M", "4.1M"];
-              const freshVals = ["2m", "5m", "12m", "28m", "45m", "1h 12m", "2h 05m", "3h 40m"];
+              type PipeStatus = "HEALTHY" | "BROKEN" | "WARNING";
+              const ppsMap = new Map((productPipelineStatus as any[]).map((r: any) => [r.product_id, r]));
 
-              type ModelRun = { name: string; status: "pass" | "fail" | "running"; duration: string; rows: string; freshness: string; tests: string };
-              const buildModelsForProd = (prod: any): ModelRun[] => {
-                const snake = toSnake(prod.name);
-                const h = (prod.id || "").split("").reduce((s: number, c: string) => s + c.charCodeAt(0), 0);
-                const r = seededR(h * 97 + 42);
-                const upCount = lineageEdges.filter(e => e.target === prod.id).length;
-                const martSuffixes = ["_summary", "_daily", "_360", "_metrics", "_activity"];
-                const pickSuffix = (i: number) => martSuffixes[i % martSuffixes.length];
-                let prefixes: string[];
-                if (prod.product_type === "SOURCE_ALIGNED") {
-                  prefixes = [`connector_${snake}`, `stg_${snake}`, `stg_${snake}_cleaned`, `marts.${snake}${pickSuffix(h)}`, `marts.${snake}_latest`];
-                } else if (prod.product_type === "BUSINESS") {
-                  const stgModels = Array.from({ length: Math.max(1, upCount) }, (_, i) => `stg_biz_${snake}_src${i + 1}`);
-                  prefixes = [...stgModels, `int_${snake}_joined`, `marts.${snake}${pickSuffix(h)}`, `marts.${snake}_wide`];
-                } else {
-                  const stgModels = Array.from({ length: Math.max(1, upCount) }, (_, i) => `stg_cnsmr_${snake}_src${i + 1}`);
-                  prefixes = [...stgModels, `marts.${snake}${pickSuffix(h)}`, `marts.${snake}_api_ready`];
-                }
-                const prodFail = r() > 0.75;
-                return prefixes.map((name, mi) => {
-                  const rv = r();
-                  const status: "pass" | "fail" | "running" = prodFail && mi === Math.floor(r() * prefixes.length) ? "fail" : rv > 0.92 ? "fail" : rv > 0.87 ? "running" : "pass";
-                  return { name, status, duration: status === "running" ? "\u2014" : durations[Math.floor(r() * durations.length)], rows: status === "running" ? "\u2014" : rowCounts[Math.floor(r() * rowCounts.length)], freshness: freshVals[Math.min(Math.floor(r() * freshVals.length), status === "fail" ? 7 : 4)], tests: status === "running" ? "running\u2026" : (() => { const p2 = Math.floor(r() * 6) + 2; const f2 = status === "fail" ? Math.floor(r() * 2) + 1 : 0; return `${p2}/${p2 + f2}`; })() };
-                });
-              };
-
-              type ProdPipe = { prod: any; domCol: string; models: ModelRun[]; healthy: boolean; upstreamIds: string[]; upstreamNames: string[]; downstreamIds: string[]; downstreamNames: string[] };
+              type ProdPipe = { prod: any; domCol: string; pipelineData: any; status: PipeStatus; healthy: boolean; upstreamEdges: { id: string; sourceName: string; status: PipeStatus; reason?: string }[]; downstreamEdges: { id: string; targetName: string; status: PipeStatus; reason?: string }[]; upstreamIds: string[]; upstreamNames: string[]; downstreamIds: string[]; downstreamNames: string[] };
               const allProdPipes: ProdPipe[] = (products as any[]).map((p: any) => {
                 const domCol = domainColorMap[p.domain_name] || "#999";
-                const models = buildModelsForProd(p);
-                const healthy = (p.quality_score || 0.85) >= 0.76;
+                const pps = ppsMap.get(p.id);
+
+                const upEdges: ProdPipe["upstreamEdges"] = [];
                 const upIds: string[] = []; const upNames: string[] = [];
                 if (p.product_type === "SOURCE_ALIGNED") {
-                  appSourceEdges.filter(e => e.productId === p.id).forEach(e => { const a = allPosApps.find(ap => ap.id === e.appId); if (a) { upIds.push(a.id); upNames.push(a.name); } });
+                  appSourceEdges.filter(e => e.productId === p.id).forEach(e => {
+                    const a = allPosApps.find(ap => ap.id === e.appId);
+                    if (a) {
+                      upIds.push(a.id); upNames.push(a.name);
+                      const reason = e.status === "BROKEN"
+                        ? `Ingestion pipeline from ${a.name} is DOWN — connector failed, no data flowing`
+                        : e.status === "WARNING"
+                          ? `Connection to ${a.name} is PAUSED — data sync suspended, freshness degrading`
+                          : undefined;
+                      upEdges.push({ id: e.id, sourceName: a.name, status: e.status, reason });
+                    }
+                  });
                 } else {
-                  lineageEdges.filter(e => e.target === p.id).forEach(e => { const s = pMap.get(e.source); if (s) { upIds.push(e.source); upNames.push(s.label); } });
+                  lineageEdges.filter(e => e.target === p.id).forEach(e => {
+                    const s = pMap.get(e.source);
+                    if (s) {
+                      upIds.push(e.source); upNames.push(s.label);
+                      let reason = e.statusReason || undefined;
+                      if (!reason && e.eStatus === "WARNING") {
+                        reason = `Upstream product ${s.label} has degraded sources — mart tables may be stale`;
+                      }
+                      upEdges.push({ id: e.id, sourceName: s.label, status: e.eStatus, reason });
+                    }
+                  });
                 }
+
+                const downEdges: ProdPipe["downstreamEdges"] = [];
                 const downIds: string[] = []; const downNames: string[] = [];
-                lineageEdges.filter(e => e.source === p.id).forEach(e => { const t = pMap.get(e.target); if (t) { downIds.push(e.target); downNames.push(t.label); } });
-                return { prod: p, domCol, models, healthy, upstreamIds: upIds, upstreamNames: upNames, downstreamIds: downIds, downstreamNames: downNames };
+                lineageEdges.filter(e => e.source === p.id).forEach(e => {
+                  const t = pMap.get(e.target);
+                  if (t) {
+                    downIds.push(e.target); downNames.push(t.label);
+                    let reason = e.statusReason || undefined;
+                    if (!reason && e.eStatus === "WARNING") {
+                      reason = `Upstream product ${p.name} has broken/degraded sources — downstream data may be stale`;
+                    }
+                    downEdges.push({ id: e.id, targetName: t.label, status: e.eStatus, reason });
+                  }
+                });
+
+                const hasFailed = pps && pps.failed > 0;
+                const hasWarningRuns = pps && pps.warning > 0;
+                const hasUpstreamIssue = upEdges.some(ue => ue.status === "BROKEN" || ue.status === "WARNING");
+                const prodStatus: PipeStatus = hasFailed ? "BROKEN" : (hasUpstreamIssue || hasWarningRuns) ? "WARNING" : "HEALTHY";
+
+                return { prod: p, domCol, pipelineData: pps || { total_runs: 0, completed: 0, warning: 0, failed: 0, running: 0, skipped: 0, last_error: null, last_run_at: null }, status: prodStatus, healthy: prodStatus === "HEALTHY", upstreamEdges: upEdges, downstreamEdges: downEdges, upstreamIds: upIds, upstreamNames: upNames, downstreamIds: downIds, downstreamNames: downNames };
               });
 
               const totalAll = allProdPipes.length;
-              const passedAll = allProdPipes.filter(pp2 => pp2.healthy).length;
-              const failedAll = totalAll - passedAll;
+              const healthyAll = allProdPipes.filter(pp2 => pp2.status === "HEALTHY").length;
+              const brokenAll = allProdPipes.filter(pp2 => pp2.status === "BROKEN").length;
+              const warningAll = allProdPipes.filter(pp2 => pp2.status === "WARNING").length;
+              const passedAll = healthyAll;
+              const failedAll = brokenAll + warningAll;
 
               const pipeSearchLower = pipeSearch.toLowerCase();
               const pipeSearchResults = pipeSearch.length > 0 ? allProdPipes.filter(pp2 => pp2.prod.name.toLowerCase().includes(pipeSearchLower)).slice(0, 8) : [];
               const focusProd = selProduct || (pipeSearchResults.length === 1 ? pipeSearchResults[0].prod : null);
               const focusPipe = focusProd ? allProdPipes.find(pp2 => pp2.prod.id === focusProd.id) : null;
 
-              const totalModels = allProdPipes.reduce((s, pp2) => s + pp2.models.length, 0);
+              const totalModels = allProdPipes.reduce((s, pp2) => s + (pp2.pipelineData?.total_runs || 0), 0);
 
               const ArchBox = ({ label, sub, col, dashed }: { label: string; sub?: string; col: string; dashed?: boolean }) => (
                 <div className="rounded-lg px-3 py-2 text-center" style={{ background: col + "08", border: `1.5px ${dashed ? "dashed" : "solid"} ${col}40`, minWidth: 0 }}>
@@ -5332,9 +4296,9 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
                         {pipeSearchResults.map(pp2 => (
                           <button key={pp2.prod.id} onClick={() => { setSel({ kind: "product", id: pp2.prod.id }); setPipeSearch(""); }} className="w-full text-left px-3 py-1.5 cursor-pointer flex items-center gap-2 transition-colors" style={{ borderBottom: `1px solid ${pp.widgetBorder}44` }}
                             onMouseEnter={e => { e.currentTarget.style.background = pp.cardBg; }} onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
-                            <span className="w-1.5 h-1.5 rounded-full" style={{ background: pp2.healthy ? cfg.green : cfg.red }} />
+                            <span className="w-1.5 h-1.5 rounded-full" style={{ background: pp2.status === "BROKEN" ? cfg.red : pp2.status === "WARNING" ? cfg.warning : cfg.green }} />
                             <span className="font-semibold truncate flex-1" style={{ fontSize: pp.prodNameSize, color: pp.headerTextColor }}>{pp2.prod.name}</span>
-                            <span className="shrink-0 px-1 py-0.5 rounded font-bold uppercase" style={{ fontSize: pp.statusBadgeSize, background: pp2.healthy ? cfg.green + "14" : cfg.red + "14", color: pp2.healthy ? cfg.green : cfg.red }}>{pp2.healthy ? "pass" : "fail"}</span>
+                            <span className="shrink-0 px-1 py-0.5 rounded font-bold uppercase" style={{ fontSize: pp.statusBadgeSize, background: (pp2.status === "BROKEN" ? cfg.red : pp2.status === "WARNING" ? cfg.warning : cfg.green) + "14", color: pp2.status === "BROKEN" ? cfg.red : pp2.status === "WARNING" ? cfg.warning : cfg.green }}>{pp2.status === "HEALTHY" ? "healthy" : pp2.status === "BROKEN" ? "broken" : "warning"}</span>
                           </button>
                         ))}
                       </div>
@@ -5349,9 +4313,9 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
                     const ingDown = pipelineStatus.filter((p: any) => p.health_status === "DOWN").length;
                     const ingTotal = pipelineStatus.length;
 
-                    const dpHealthy = (products as any[]).filter((p: any) => (p.quality_score || 0.85) >= 0.76).length;
-                    const dpFailed = totalAll - dpHealthy;
-                    const dpWarn = (products as any[]).filter((p: any) => { const q = p.quality_score || 0.85; return q >= 0.60 && q < 0.76; }).length;
+                    const dpHealthy = healthyAll;
+                    const dpFailed = brokenAll;
+                    const dpWarn = warningAll;
 
                     const banTabs = [
                       { key: "ingestion" as const, label: "Ingestion Pipelines", icon: <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg> },
@@ -5382,9 +4346,9 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
                                 <span className="font-black block" style={{ fontSize: pp.kpiFontSize, color: ingDown > 0 ? cfg.red : cfg.green }}>{ingDown}</span>
                                 <span className="font-semibold block" style={{ fontSize: pp.banDescSize, color: ingDown > 0 ? cfg.red : cfg.green, lineHeight: 1.3 }}>Failed</span>
                               </div>
-                              <div className="rounded-lg p-2" style={{ background: ingDegraded > 0 ? "#f59e0b08" : cfg.green + "08", border: `1px solid ${ingDegraded > 0 ? "#f59e0b" : cfg.green}18` }}>
-                                <span className="font-black block" style={{ fontSize: pp.kpiFontSize, color: ingDegraded > 0 ? "#f59e0b" : cfg.green }}>{ingDegraded}</span>
-                                <span className="font-semibold block" style={{ fontSize: pp.banDescSize, color: ingDegraded > 0 ? "#f59e0b" : cfg.green, lineHeight: 1.3 }}>Warnings</span>
+                              <div className="rounded-lg p-2" style={{ background: ingDegraded > 0 ? cfg.warning + "08" : cfg.green + "08", border: `1px solid ${ingDegraded > 0 ? cfg.warning : cfg.green}18` }}>
+                                <span className="font-black block" style={{ fontSize: pp.kpiFontSize, color: ingDegraded > 0 ? cfg.warning : cfg.green }}>{ingDegraded}</span>
+                                <span className="font-semibold block" style={{ fontSize: pp.banDescSize, color: ingDegraded > 0 ? cfg.warning : cfg.green, lineHeight: 1.3 }}>Warnings</span>
                               </div>
                             </div>
                           ) : (
@@ -5401,9 +4365,9 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
                                 <span className="font-black block" style={{ fontSize: pp.kpiFontSize, color: dpFailed > 0 ? cfg.red : cfg.green }}>{dpFailed}</span>
                                 <span className="font-semibold block" style={{ fontSize: pp.banDescSize, color: dpFailed > 0 ? cfg.red : cfg.green, lineHeight: 1.3 }}>Failed</span>
                               </div>
-                              <div className="rounded-lg p-2" style={{ background: dpWarn > 0 ? "#f59e0b08" : cfg.green + "08", border: `1px solid ${dpWarn > 0 ? "#f59e0b" : cfg.green}18` }}>
-                                <span className="font-black block" style={{ fontSize: pp.kpiFontSize, color: dpWarn > 0 ? "#f59e0b" : cfg.green }}>{dpWarn}</span>
-                                <span className="font-semibold block" style={{ fontSize: pp.banDescSize, color: dpWarn > 0 ? "#f59e0b" : cfg.green, lineHeight: 1.3 }}>Warnings</span>
+                              <div className="rounded-lg p-2" style={{ background: dpWarn > 0 ? cfg.warning + "08" : cfg.green + "08", border: `1px solid ${dpWarn > 0 ? cfg.warning : cfg.green}18` }}>
+                                <span className="font-black block" style={{ fontSize: pp.kpiFontSize, color: dpWarn > 0 ? cfg.warning : cfg.green }}>{dpWarn}</span>
+                                <span className="font-semibold block" style={{ fontSize: pp.banDescSize, color: dpWarn > 0 ? cfg.warning : cfg.green, lineHeight: 1.3 }}>Warnings</span>
                               </div>
                             </div>
                           )}
@@ -5490,64 +4454,70 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
                   {/* Focused product view */}
                   {focusPipe && (() => {
                     const fp = focusPipe;
-                    const getUpstreamStatus = (uid: string) => {
+                    const getUpstreamStatus = (uid: string): { name: string; healthy: boolean; status: PipeStatus } => {
                       const upPipe = allProdPipes.find(pp2 => pp2.prod.id === uid);
-                      if (upPipe) return { name: upPipe.prod.name, healthy: upPipe.healthy };
+                      if (upPipe) return { name: upPipe.prod.name, healthy: upPipe.healthy, status: upPipe.status };
                       const upApp = allPosApps.find(a => a.id === uid);
-                      if (upApp) return { name: upApp.name, healthy: upApp.conn_status !== "BROKEN" };
-                      return { name: uid, healthy: true };
+                      if (upApp) return { name: upApp.name, healthy: upApp.conn_status !== "BROKEN", status: upApp.conn_status === "BROKEN" ? "BROKEN" : "HEALTHY" };
+                      return { name: uid, healthy: true, status: "HEALTHY" };
                     };
-                    const getDownstreamStatus = (did: string) => {
+                    const getDownstreamStatus = (did: string): { name: string; healthy: boolean; status: PipeStatus } => {
                       const dPipe = allProdPipes.find(pp2 => pp2.prod.id === did);
-                      if (dPipe) return { name: dPipe.prod.name, healthy: dPipe.healthy };
-                      return { name: did, healthy: true };
+                      if (dPipe) return { name: dPipe.prod.name, healthy: dPipe.healthy, status: dPipe.status };
+                      return { name: did, healthy: true, status: "HEALTHY" };
                     };
 
                     const isSource = fp.prod.product_type === "SOURCE_ALIGNED";
                     const isBiz = fp.prod.product_type === "BUSINESS";
 
-                    const ingestionModels = fp.models.filter(m => m.name.startsWith("connector_"));
-                    const stgModels = fp.models.filter(m => m.name.startsWith("stg_"));
-                    const martModels = fp.models.filter(m => m.name.startsWith("marts.") || m.name.startsWith("int_"));
-
+                    const pd = fp.pipelineData;
                     const activeMTab = isSource ? pipeModelTab : (pipeModelTab === "ingestion" ? "stage" : pipeModelTab);
-                    const visibleModels = activeMTab === "ingestion" ? ingestionModels : activeMTab === "stage" ? stgModels : martModels;
 
                     type LogEntry = { message: string; status: "pass" | "fail" | "running"; time: string; phase: "INGESTION" | "TRANSFORMATION" };
-                    const logRng = seededR(fp.prod.id.length * 71);
-                    const hours = ["01:08", "02:14", "03:47", "04:32", "06:22", "07:15", "08:41", "09:55", "11:03", "12:18", "13:47", "14:22", "15:38", "16:51", "18:09"];
                     const focusLogs: LogEntry[] = [];
 
-                    if (isSource) {
-                      const connectorModel = fp.models.find(m => m.name.startsWith("connector_"));
-                      const connectorFailed = connectorModel?.status === "fail";
-                      fp.upstreamNames.forEach((appName, ai) => {
-                        const hi = Math.min(ai, hours.length - 1);
-                        if (connectorFailed) {
-                          const msgs = [`[CONNECTOR] ${appName} → ${fp.prod.name}: connection refused after 3 retries.`, `[CONNECTOR] ${appName} → ${fp.prod.name}: OAuth2 token expired.`, `[CONNECTOR] ${appName} → ${fp.prod.name}: API rate limit exceeded (429).`];
-                          focusLogs.push({ message: msgs[Math.floor(logRng() * msgs.length)], status: "fail", time: hours[hi], phase: "INGESTION" });
-                        } else if (connectorModel?.status === "running") {
-                          focusLogs.push({ message: `[CONNECTOR] ${appName} → ${fp.prod.name}: CDC stream active, replicating ${Math.floor(logRng() * 400 + 50)}K rows\u2026`, status: "running", time: hours[hi], phase: "INGESTION" });
-                        } else {
-                          focusLogs.push({ message: `[CONNECTOR] ${appName} → ${fp.prod.name}: extracted ${Math.floor(logRng() * 800 + 100)}K records. Schema drift check passed.`, status: "pass", time: hours[hi], phase: "INGESTION" });
-                        }
-                      });
-                    }
-                    const txModels = fp.models.filter(m => !m.name.startsWith("connector_") && !m.name.startsWith("raw_"));
-                    txModels.forEach((m, mi) => {
-                      const hi = Math.min((isSource ? fp.upstreamNames.length : 0) + mi, hours.length - 1);
-                      let msg: string;
-                      if (m.status === "fail") {
-                        const failMsgs = [`[MODEL] ${m.name}: NOT NULL constraint failed on \`${["id", "created_at", "account_id", "user_key"][Math.floor(logRng() * 4)]}\`. Duration: ${m.duration}.`, `[MODEL] ${m.name}: query timeout after ${m.duration}. Freshness: ${m.freshness}.`, `[MODEL] ${m.name}: row count anomaly — expected ~${m.rows} rows but got 0.`];
-                        msg = failMsgs[Math.floor(logRng() * failMsgs.length)];
-                      } else if (m.status === "running") {
-                        msg = `[MODEL] ${m.name}: executing\u2026 elapsed ${m.duration || "—"}.`;
+                    fp.upstreamEdges.forEach(ue => {
+                      if (ue.status === "BROKEN") {
+                        focusLogs.push({ message: `[UPSTREAM BROKEN] ${ue.sourceName}: DAG failure in this product's staging model that reads from "${ue.sourceName}" — ${ue.reason || "pipeline broken, downstream stale"}`, status: "fail", time: "—", phase: "INGESTION" });
+                      } else if (ue.status === "WARNING") {
+                        focusLogs.push({ message: `[UPSTREAM WARNING] ${ue.sourceName}: ${ue.reason || "Upstream dependency degraded — freshness at risk"}`, status: "running", time: "—", phase: "INGESTION" });
                       } else {
-                        msg = `[MODEL] ${m.name}: completed in ${m.duration}. ${m.rows} rows. ${m.tests} tests passed.`;
+                        focusLogs.push({ message: `[UPSTREAM OK] ${ue.sourceName}: healthy, data fresh`, status: "pass", time: "—", phase: "INGESTION" });
                       }
-                      focusLogs.push({ message: msg, status: m.status, time: hours[hi], phase: "TRANSFORMATION" });
                     });
-                    focusLogs.sort((a, b) => a.time.localeCompare(b.time));
+
+                    if (pd.last_error) {
+                      focusLogs.push({ message: `[DAG FAILURE] ${pd.last_error}`, status: "fail", time: pd.last_run_at?.slice(11, 16) || "—", phase: "TRANSFORMATION" });
+                    }
+                    const warnCount = pd.warning || 0;
+                    const skipped = pd.skipped || (pd.total_runs - pd.completed - pd.failed - warnCount - (pd.running || 0));
+                    if (pd.failed > 0) {
+                      const parts = [`${pd.failed} FAILED`];
+                      if (skipped > 0) parts.push(`${skipped} skipped (dependency chain broken)`);
+                      if (warnCount > 0) parts.push(`${warnCount} warning (stale data)`);
+                      if (pd.completed > 0) parts.push(`${pd.completed} completed`);
+                      focusLogs.push({ message: `[PIPELINE] ${pd.total_runs} model runs: ${parts.join(", ")}`, status: "fail", time: pd.last_run_at?.slice(11, 16) || "—", phase: "TRANSFORMATION" });
+                    } else if (warnCount > 0) {
+                      const parts = [`${warnCount} warning (stale upstream data)`];
+                      if (pd.completed > 0) parts.push(`${pd.completed} completed`);
+                      if (skipped > 0) parts.push(`${skipped} skipped`);
+                      focusLogs.push({ message: `[PIPELINE] ${pd.total_runs} model runs: ${parts.join(", ")}`, status: "running", time: pd.last_run_at?.slice(11, 16) || "—", phase: "TRANSFORMATION" });
+                    } else if (pd.completed > 0 && skipped > 0) {
+                      focusLogs.push({ message: `[PIPELINE] ${pd.total_runs} model runs: ${pd.completed} completed, ${skipped} skipped (connector paused — using cached data)`, status: "running", time: pd.last_run_at?.slice(11, 16) || "—", phase: "TRANSFORMATION" });
+                    } else if (pd.completed > 0 && pd.failed === 0) {
+                      focusLogs.push({ message: `[PIPELINE] All ${pd.completed} of ${pd.total_runs} model runs completed successfully`, status: "pass", time: pd.last_run_at?.slice(11, 16) || "—", phase: "TRANSFORMATION" });
+                    }
+                    if (pd.running > 0) {
+                      focusLogs.push({ message: `[PIPELINE] ${pd.running} model run(s) currently in progress`, status: "running", time: "now", phase: "TRANSFORMATION" });
+                    }
+
+                    fp.downstreamEdges.forEach(de => {
+                      if (de.status === "BROKEN") {
+                        focusLogs.push({ message: `[DOWNSTREAM BROKEN] ${de.targetName}: DAG failure in "${de.targetName}" staging model that reads from "${fp.prod.name}" — ${de.reason || "orchestration pipeline broken"}`, status: "fail", time: "—", phase: "TRANSFORMATION" });
+                      } else if (de.status === "WARNING") {
+                        focusLogs.push({ message: `[DOWNSTREAM WARNING] ${de.targetName}: ${de.reason || "Downstream product may have stale data due to upstream issues"}`, status: "running", time: "—", phase: "TRANSFORMATION" });
+                      }
+                    });
 
                     const successLogs = focusLogs.filter(l => l.status === "pass");
                     const warningLogs = focusLogs.filter(l => l.status === "running");
@@ -5565,24 +4535,30 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
                       ? activeLogList.filter(l => l.message.toLowerCase().includes(lineageFocusName.toLowerCase()))
                       : activeLogList;
 
-                    type PipeLinItem = { id: string; name: string; healthy: boolean };
+                    type PipeLinItem = { id: string; name: string; healthy: boolean; status: PipeStatus };
+                    const statusColor = (s: PipeStatus) => s === "BROKEN" ? cfg.red : s === "WARNING" ? cfg.warning : cfg.green;
                     const pipeSelWidget: React.CSSProperties = { background: pp.selWidgetBg, border: `1px solid ${pp.selWidgetBorder}`, borderRadius: pp.widgetRadius };
                     const pipeLinCard: React.CSSProperties = { background: pp.selBoxBg, border: `1px solid ${pp.selBoxBorder}`, borderRadius: pp.cardRadius };
                     const tblRule = pp.selTableBorder;
                     const upPipeGroups = (() => {
                       const apps: PipeLinItem[] = [];
                       const layers: Record<string, PipeLinItem[]> = { SOURCE_ALIGNED: [], BUSINESS: [], CONSUMER_ALIGNED: [] };
-                      fp.upstreamIds.forEach(uid => {
+                      const upEdgeMap = new Map(fp.upstreamEdges.map(ue => [ue.id, ue]));
+                      fp.upstreamIds.forEach((uid, i) => {
                         const ap = allPosApps.find(a => a.id === uid);
                         if (ap) {
-                          apps.push({ id: uid, name: ap.name, healthy: ap.conn_status !== "BROKEN" });
+                          const st: PipeStatus = ap.conn_status === "BROKEN" ? "BROKEN" : ap.conn_status === "ACTIVE" ? "HEALTHY" : "WARNING";
+                          apps.push({ id: uid, name: ap.name, healthy: st === "HEALTHY", status: st });
                           return;
                         }
+                        const edgeInfo = upEdgeMap.get(uid);
+                        const edgeStatus = edgeInfo?.status;
                         const us = getUpstreamStatus(uid);
+                        const finalStatus: PipeStatus = edgeStatus === "BROKEN" ? "BROKEN" : edgeStatus === "WARNING" ? "WARNING" : us.status;
                         const p = (products as any[]).find((x: any) => x.id === uid);
                         const lk = (p?.product_type as string) || "SOURCE_ALIGNED";
                         if (!layers[lk]) layers[lk] = [];
-                        layers[lk].push({ id: uid, name: us.name, healthy: us.healthy });
+                        layers[lk].push({ id: uid, name: us.name, healthy: finalStatus === "HEALTHY", status: finalStatus });
                       });
                       const out: { label: string; color: string; items: PipeLinItem[] }[] = [];
                       if (apps.length) out.push({ label: "Applications", color: cfg.layerColors.APPS, items: apps });
@@ -5593,12 +4569,16 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
                     })();
                     const downPipeGroups = (() => {
                       const layers: Record<string, PipeLinItem[]> = { SOURCE_ALIGNED: [], BUSINESS: [], CONSUMER_ALIGNED: [] };
+                      const downEdgeMap = new Map(fp.downstreamEdges.map(de => [de.id, de]));
                       fp.downstreamIds.forEach(did => {
                         const ds = getDownstreamStatus(did);
+                        const edgeInfo = downEdgeMap.get(did);
+                        const edgeStatus = edgeInfo?.status;
+                        const finalStatus: PipeStatus = edgeStatus === "BROKEN" ? "BROKEN" : edgeStatus === "WARNING" ? "WARNING" : ds.status;
                         const p = (products as any[]).find((x: any) => x.id === did);
                         const lk = (p?.product_type as string) || "CONSUMER_ALIGNED";
                         if (!layers[lk]) layers[lk] = [];
-                        layers[lk].push({ id: did, name: ds.name, healthy: ds.healthy });
+                        layers[lk].push({ id: did, name: ds.name, healthy: finalStatus === "HEALTHY", status: finalStatus });
                       });
                       const out: { label: string; color: string; items: PipeLinItem[] }[] = [];
                       (["SOURCE_ALIGNED", "BUSINESS", "CONSUMER_ALIGNED"] as const).forEach(lk => {
@@ -5621,24 +4601,31 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
                     const linTitleSz = pp.selLineageTitleSize;
                     const linChevC = pp.selLineageChevronColor || linTitleC;
 
-                    const ModelTable = ({ models }: { models: ModelRun[] }) => (
+                    type PPRun = { id: string; model_name: string; stage: string; orchestrator: string; status: string; duration_sec: number; rows_processed: number; log_message: string | null; error_message: string | null; started_at: string | null; data_product_id: string };
+                    const fpRuns: PPRun[] = (productPipelineRuns as any[]).filter((r: any) => r.data_product_id === fp.prod.id);
+
+                    const fmtDuration = (s: number) => s < 60 ? `${s.toFixed(0)}s` : s < 3600 ? `${Math.floor(s / 60)}m ${Math.floor(s % 60)}s` : `${(s / 3600).toFixed(1)}h`;
+                    const fmtRows = (n: number) => n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}K` : String(n);
+
+                    const PipelineRunTable = ({ runs }: { runs: PPRun[] }) => (
                       <div className="overflow-y-auto rounded-lg flex-1 min-h-0" style={{ scrollbarWidth: "thin" as const, background: pp.selTableBg, border: `1px solid ${tblRule}` }}>
                         <table className="w-full" style={{ tableLayout: "fixed" }}>
-                          <colgroup><col style={{ width: "38%" }} /><col style={{ width: "8%" }} /><col style={{ width: "14%" }} /><col style={{ width: "14%" }} /><col style={{ width: "14%" }} /><col style={{ width: "12%" }} /></colgroup>
-                          <thead><tr>{["Name", "", "Duration", "Records", "Fresh", "Tests"].map(h => (<th key={h} className="px-1 py-0.5 text-left" style={{ fontSize: pp.tableHeaderSize, fontWeight: 700, color: pp.headerSubColor, textTransform: "uppercase" as const, borderBottom: `1px solid ${tblRule}`, position: "sticky" as const, top: 0, background: pp.selTableHeaderBg }}>{h}</th>))}</tr></thead>
-                          <tbody>{models.map(m => {
-                            const sCol = m.status === "pass" ? cfg.green : m.status === "fail" ? cfg.red : "#f59e0b";
-                            return (<tr key={m.name} style={{ borderBottom: `1px solid ${tblRule}40` }}>
-                              <td className="px-1 py-0.5"><span className="font-mono font-semibold truncate block" style={{ fontSize: pp.modelNameSize, color: pp.headerTextColor }}>{m.name}</span></td>
-                              <td className="px-1 py-0.5"><span className="font-bold" style={{ fontSize: pp.modelNameSize + 0.5, color: sCol }}>{m.status === "pass" ? "\u2713" : m.status === "fail" ? "\u2717" : "\u25CB"}</span></td>
-                              <td className="px-1 py-0.5"><span className="font-mono" style={{ fontSize: pp.tableDataSize, color: pp.headerSubColor }}>{m.duration}</span></td>
-                              <td className="px-1 py-0.5"><span className="font-mono" style={{ fontSize: pp.tableDataSize, color: pp.headerSubColor }}>{m.rows}</span></td>
-                              <td className="px-1 py-0.5"><span className="font-mono" style={{ fontSize: pp.tableDataSize - 0.5, color: pp.headerSubColor }}>{m.freshness}</span></td>
-                              <td className="px-1 py-0.5"><span className="font-mono" style={{ fontSize: pp.tableDataSize, color: pp.headerSubColor }}>{m.tests}</span></td>
+                          <colgroup><col style={{ width: "35%" }} /><col style={{ width: "8%" }} /><col style={{ width: "15%" }} /><col style={{ width: "12%" }} /><col style={{ width: "15%" }} /><col style={{ width: "15%" }} /></colgroup>
+                          <thead><tr>{["Model", "", "Stage", "Duration", "Records", "Orch"].map(h => (<th key={h} className="px-1 py-0.5 text-left" style={{ fontSize: pp.tableHeaderSize, fontWeight: 700, color: pp.headerSubColor, textTransform: "uppercase" as const, borderBottom: `1px solid ${tblRule}`, position: "sticky" as const, top: 0, background: pp.selTableHeaderBg }}>{h}</th>))}</tr></thead>
+                          <tbody>{runs.map((m, i) => {
+                            const sCol = m.status === "COMPLETED" ? cfg.green : m.status === "FAILED" ? cfg.red : m.status === "WARNING" ? cfg.warning : m.status === "SKIPPED" ? "#9ca3af" : cfg.warning;
+                            const icon = m.status === "COMPLETED" ? "\u2713" : m.status === "FAILED" ? "\u2717" : m.status === "WARNING" ? "\u26A0" : m.status === "RUNNING" ? "\u25CB" : "\u2014";
+                            return (<tr key={m.id || i} style={{ borderBottom: `1px solid ${tblRule}40` }}>
+                              <td className="px-1 py-0.5"><span className="font-mono font-semibold truncate block" style={{ fontSize: pp.modelNameSize, color: pp.headerTextColor }}>{m.model_name}</span></td>
+                              <td className="px-1 py-0.5"><span className="font-bold" style={{ fontSize: pp.modelNameSize + 0.5, color: sCol }}>{icon}</span></td>
+                              <td className="px-1 py-0.5"><span className="font-mono" style={{ fontSize: pp.tableDataSize, color: pp.headerSubColor }}>{m.stage}</span></td>
+                              <td className="px-1 py-0.5"><span className="font-mono" style={{ fontSize: pp.tableDataSize, color: pp.headerSubColor }}>{m.status === "SKIPPED" ? "\u2014" : fmtDuration(m.duration_sec)}</span></td>
+                              <td className="px-1 py-0.5"><span className="font-mono" style={{ fontSize: pp.tableDataSize, color: pp.headerSubColor }}>{m.rows_processed > 0 ? fmtRows(m.rows_processed) : "\u2014"}</span></td>
+                              <td className="px-1 py-0.5"><span className="font-mono" style={{ fontSize: pp.tableDataSize, color: pp.headerSubColor }}>{m.orchestrator}</span></td>
                             </tr>);
                           })}</tbody>
                         </table>
-                        {models.length === 0 && <p className="text-center py-3 font-semibold" style={{ fontSize: pp.prodMetaSize + 1, color: pp.headerSubColor }}>No models in this category</p>}
+                        {runs.length === 0 && <p className="text-center py-3 font-semibold" style={{ fontSize: pp.prodMetaSize + 1, color: pp.headerSubColor }}>No pipeline runs recorded</p>}
                       </div>
                     );
 
@@ -5665,12 +4652,11 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
                                         <span className="font-semibold" style={{ fontSize: Math.max(5, pp.prodMetaSize - 1.5), color: g.color + "99" }}>{g.items.length}</span>
                                       </div>
                                       <div className="grid grid-cols-3 gap-x-0.5 gap-y-0.5">
-                                        {g.items.map(item => (
-                                          <button key={item.id} type="button" onClick={() => onPipeLineageClick(item)} className="flex items-center gap-1 px-1.5 py-0.5 rounded-md text-left cursor-pointer transition-colors hover:bg-gray-50" style={{ boxShadow: !item.healthy ? `0 0 0 2px ${cfg.red}` : "none" }}>
-                                            <span className="rounded-full shrink-0" style={{ width: 5, height: 5, background: item.healthy ? cfg.green : cfg.red, boxShadow: !item.healthy ? `0 0 0 2px ${cfg.red}33` : "none" }} />
+                                        {g.items.map(item => { const sc = statusColor(item.status); return (
+                                          <button key={item.id} type="button" onClick={() => onPipeLineageClick(item)} className="flex items-center gap-1 px-1.5 py-0.5 rounded-md text-left cursor-pointer transition-colors hover:bg-gray-50" style={{ boxShadow: item.status !== "HEALTHY" ? `0 0 0 2px ${sc}` : "none" }}>
+                                            <span className="rounded-full shrink-0" style={{ width: 5, height: 5, background: sc, boxShadow: item.status !== "HEALTHY" ? `0 0 0 2px ${sc}33` : "none" }} />
                                             <span className="font-medium flex-1 truncate" style={{ fontSize: pp.prodMetaSize, color: pp.headerTextColor }}>{item.name}</span>
-                                          </button>
-                                        ))}
+                                          </button>); })}
                                       </div>
                                     </div>
                                   ))}
@@ -5693,12 +4679,11 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
                                         <span className="font-semibold" style={{ fontSize: Math.max(5, pp.prodMetaSize - 1.5), color: g.color + "99" }}>{g.items.length}</span>
                                       </div>
                                       <div className="grid grid-cols-3 gap-x-0.5 gap-y-0.5">
-                                        {g.items.map(item => (
-                                          <button key={item.id} type="button" onClick={() => onPipeLineageClick(item)} className="flex items-center gap-1 px-1.5 py-0.5 rounded-md text-left cursor-pointer transition-colors hover:bg-gray-50" style={{ boxShadow: !item.healthy ? `0 0 0 2px ${cfg.red}` : "none" }}>
-                                            <span className="rounded-full shrink-0" style={{ width: 5, height: 5, background: item.healthy ? cfg.green : cfg.red, boxShadow: !item.healthy ? `0 0 0 2px ${cfg.red}33` : "none" }} />
+                                        {g.items.map(item => { const sc = statusColor(item.status); return (
+                                          <button key={item.id} type="button" onClick={() => onPipeLineageClick(item)} className="flex items-center gap-1 px-1.5 py-0.5 rounded-md text-left cursor-pointer transition-colors hover:bg-gray-50" style={{ boxShadow: item.status !== "HEALTHY" ? `0 0 0 2px ${sc}` : "none" }}>
+                                            <span className="rounded-full shrink-0" style={{ width: 5, height: 5, background: sc, boxShadow: item.status !== "HEALTHY" ? `0 0 0 2px ${sc}33` : "none" }} />
                                             <span className="font-medium flex-1 truncate" style={{ fontSize: pp.prodMetaSize, color: pp.headerTextColor }}>{item.name}</span>
-                                          </button>
-                                        ))}
+                                          </button>); })}
                                       </div>
                                     </div>
                                   ))}
@@ -5713,7 +4698,7 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
                         <div className="rounded-xl overflow-hidden flex flex-col" style={pipeSelWidget}>
                           <div className="flex shrink-0" style={{ borderBottom: `2px solid ${tblRule}` }}>
                             {([
-                              { key: "models" as const, label: "Models", count: fp.models.length, icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /></svg> },
+                              { key: "models" as const, label: "Models", count: fpRuns.length, icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /></svg> },
                               { key: "logs" as const, label: "Logs", count: successLogs.length + warningLogs.length + failureLogs.length, icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" /></svg> },
                             ]).map(tab => (
                               <button key={tab.key} onClick={() => setPipeDetailTab(tab.key)} className={`flex-1 py-2 text-center cursor-pointer transition-all flex items-center justify-center gap-1.5 ${pipeDetailTab === tab.key ? "border-b-2" : "hover:bg-gray-50"}`} style={{ borderColor: pipeDetailTab === tab.key ? layerCol : "transparent", fontSize: pp.tabFontSize + 1.5, fontWeight: pipeDetailTab === tab.key ? 800 : 500, color: pipeDetailTab === tab.key ? pp.headerTextColor : pp.headerSubColor }}>
@@ -5725,21 +4710,19 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
                           {pipeDetailTab === "models" && (
                             <>
                               <div className="flex shrink-0" style={{ borderBottom: `1px solid ${tblRule}`, background: pp.selTableHeaderBg }}>
-                                {(isSource ? [
-                                  { key: "ingestion" as const, label: "Ingestion", count: ingestionModels.length, icon: <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 2v10m0 0l3.5-3.5M12 12l-3.5-3.5" /><path d="M2 17l.621 2.485A2 2 0 0 0 4.561 21h14.878a2 2 0 0 0 1.94-1.515L22 17" /></svg> },
-                                  { key: "stage" as const, label: "Stage", count: stgModels.length, icon: <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><ellipse cx="12" cy="5" rx="9" ry="3" /><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" /><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" /></svg> },
-                                  { key: "mart" as const, label: "Marts", count: martModels.length, icon: <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polygon points="12 2 2 7 12 12 22 7 12 2" /><polyline points="2 17 12 22 22 17" /><polyline points="2 12 12 17 22 12" /></svg> },
-                                ] : [
-                                  { key: "stage" as const, label: "Stage", count: stgModels.length, icon: <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><ellipse cx="12" cy="5" rx="9" ry="3" /><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" /><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" /></svg> },
-                                  { key: "mart" as const, label: "Marts", count: martModels.length, icon: <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polygon points="12 2 2 7 12 12 22 7 12 2" /><polyline points="2 17 12 22 22 17" /><polyline points="2 12 12 17 22 12" /></svg> },
-                                ]).map(tab => (
-                                  <button key={tab.key} onClick={() => setPipeModelTab(tab.key)} className={`flex-1 py-1.5 text-center cursor-pointer transition-all flex items-center justify-center gap-1 ${activeMTab === tab.key ? "border-b-2" : "hover:bg-gray-100"}`} style={{ borderColor: activeMTab === tab.key ? layerCol : "transparent", fontSize: pp.tabFontSize + 0.5, fontWeight: activeMTab === tab.key ? 700 : 500, color: activeMTab === tab.key ? pp.headerTextColor : pp.headerSubColor }}>
-                                    {tab.icon}{tab.label} <span className="opacity-50">({tab.count})</span>
+                                {[
+                                  { key: "all" as const, label: "All", count: fpRuns.length },
+                                  { key: "connector" as const, label: "Connector", count: fpRuns.filter(r => r.stage === "CONNECTOR").length },
+                                  { key: "staging" as const, label: "Staging", count: fpRuns.filter(r => r.stage === "STAGING").length },
+                                  { key: "mart" as const, label: "Marts", count: fpRuns.filter(r => r.stage === "MART").length },
+                                ].map(tab => (
+                                  <button key={tab.key} onClick={() => setPipeModelTab(tab.key as any)} className={`flex-1 py-1.5 text-center cursor-pointer transition-all flex items-center justify-center gap-1 ${activeMTab === tab.key ? "border-b-2" : "hover:bg-gray-100"}`} style={{ borderColor: activeMTab === tab.key ? layerCol : "transparent", fontSize: pp.tabFontSize + 0.5, fontWeight: activeMTab === tab.key ? 700 : 500, color: activeMTab === tab.key ? pp.headerTextColor : pp.headerSubColor }}>
+                                    {tab.label} <span className="opacity-50">({tab.count})</span>
                                   </button>
                                 ))}
                               </div>
                               <div className="px-2.5 py-1.5 box-border shrink-0 flex flex-col min-h-0" style={{ height: pp.selModelTableMaxHeight }}>
-                                <ModelTable models={visibleModels} />
+                                <PipelineRunTable runs={activeMTab === "all" ? fpRuns : fpRuns.filter(r => r.stage === (activeMTab === "connector" ? "CONNECTOR" : activeMTab === "staging" ? "STAGING" : "MART"))} />
                               </div>
                             </>
                           )}
@@ -5749,7 +4732,7 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
                               <div className="flex shrink-0" style={{ borderBottom: `1px solid ${tblRule}`, background: pp.selTableHeaderBg }}>
                                 {([
                                   { key: "success" as const, label: "Success", count: successLogs.length, col: cfg.green, icon: <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg> },
-                                  { key: "warnings" as const, label: "Warnings", count: warningLogs.length, col: "#f59e0b", icon: <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg> },
+                                  { key: "warnings" as const, label: "Warnings", count: warningLogs.length, col: cfg.warning, icon: <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg> },
                                   { key: "failure" as const, label: "Failure", count: failureLogs.length, col: cfg.red, icon: <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></svg> },
                                 ]).map(tab => (
                                   <button key={tab.key} onClick={() => setPipeLogTab(tab.key)} className={`flex-1 py-1.5 text-center cursor-pointer transition-all flex items-center justify-center gap-1 ${activeLogTab === tab.key ? "border-b-2" : "hover:bg-gray-100"}`} style={{ borderColor: activeLogTab === tab.key ? tab.col : "transparent", fontSize: pp.tabFontSize + 0.5, fontWeight: activeLogTab === tab.key ? 700 : 500, color: activeLogTab === tab.key ? tab.col : pp.headerSubColor }}>
@@ -5773,8 +4756,8 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
                                 )}
                                 <div className="space-y-1.5">
                                   {displayLogList.map((log, idx) => {
-                                    const sevColor = log.status === "fail" ? cfg.red : log.status === "running" ? "#f59e0b" : cfg.green;
-                                    const sevBg = log.status === "fail" ? cfg.red + "06" : log.status === "running" ? "#f59e0b06" : cfg.green + "04";
+                                    const sevColor = log.status === "fail" ? cfg.red : log.status === "running" ? cfg.warning : cfg.green;
+                                    const sevBg = log.status === "fail" ? cfg.red + "06" : log.status === "running" ? cfg.warning + "06" : cfg.green + "04";
                                     const phaseCol = log.phase === "INGESTION" ? "#6366f1" : "#0891b2";
                                     return (
                                       <div key={idx} className="rounded-lg px-2.5 py-2" style={{ background: sevBg, border: `1px solid ${sevColor}12` }}>
@@ -5806,7 +4789,7 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
             })()}
 
             {/* ── TAB: COST ── */}
-            {panelTab === "cost" && (() => {
+            {panelTab === "cost" && !selApp && (() => {
               const totalCost = (apps as any[]).reduce((s: number, a: any) => s + (a.monthly_cost_usd || 0), 0);
 
               const CostClearSel = () => (selProduct || selApp) ? (
@@ -6314,7 +5297,7 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
             })()}
 
             {/* ── TAB: CATALOGUE ── */}
-            {panelTab === "catalogue" && (() => {
+            {panelTab === "catalogue" && !selApp && (() => {
               const BANNER_ICONS: Record<string, string> = {
                 SOURCE_ALIGNED: "M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4",
                 BUSINESS: "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z",
@@ -6617,6 +5600,121 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
                 </div>
               );
             })()}
+
+            {/* ── TAB: ASK AI ── */}
+            {panelTab === "askai" && (() => {
+              const SUGGESTED = selProduct
+                ? [
+                    `Is ${selProduct.name} pipeline healthy? Show me any failing models`,
+                    `What upstream sources feed ${selProduct.name} and are any broken?`,
+                    `Which downstream products are impacted if ${selProduct.name} fails?`,
+                    `What are the quality issues with ${selProduct.name}?`,
+                  ]
+                : selApp
+                ? [
+                    `Is ${selApp.name} connector healthy or broken?`,
+                    `Which source products does ${selApp.name} feed?`,
+                    `What downstream impact would a ${selApp.name} failure cause?`,
+                  ]
+                : [
+                    "Which data products have broken pipeline runs right now?",
+                    "What applications have failing or paused connectors?",
+                    "Show me the lineage impact of current broken pipelines",
+                    "Which downstream products are affected by upstream failures?",
+                    "What are the most critical pipeline warnings?",
+                  ];
+              return (
+                <div className="flex flex-col" style={{ height: "calc(100% + 12px)", margin: "-6px -20px -6px -20px" }}>
+                  {/* Messages area */}
+                  <div ref={aiScrollRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-3" style={{ minHeight: 0 }}>
+                    {aiMessages.length === 0 && (
+                      <div className="flex flex-col items-center justify-center h-full text-center px-2">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3" style={{ background: "#1a1a1a" }}>
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                          </svg>
+                        </div>
+                        <div className="font-bold text-[13px] mb-1" style={{ color: cfg.text }}>Ask Atlas</div>
+                        <p className="text-[10px] text-gray-400 leading-relaxed mb-4 max-w-[260px]">
+                          Ask anything about your data mesh — pipelines, lineage, failures, observability. Context-aware answers powered by Gemini.
+                        </p>
+                        <div className="space-y-1.5 w-full">
+                          {SUGGESTED.map((q, i) => (
+                            <button key={i} onClick={() => sendAiMessage(q)}
+                              className="w-full text-left px-3 py-2 rounded-lg text-[10px] transition-all cursor-pointer hover:shadow-sm"
+                              style={{ background: "#f6f6f6", border: "1px solid #e5e5e5", color: "#4b5563" }}>
+                              <span className="opacity-50 mr-1.5">&#10132;</span>{q}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {aiMessages.map((msg, i) => (
+                      <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                        <div className={`max-w-[88%] rounded-xl px-3 py-2 text-[11px] leading-[1.7] ${
+                          msg.role === "user"
+                            ? "bg-gray-800 text-white rounded-br-sm"
+                            : "bg-gray-50 border border-gray-100 rounded-bl-sm"
+                        }`} style={msg.role === "assistant" ? { color: cfg.text } : undefined}>
+                          {msg.role === "assistant" ? (
+                            <AiMarkdown text={msg.text || (aiStreaming && i === aiMessages.length - 1 ? "Thinking..." : "")} />
+                          ) : msg.text}
+                        </div>
+                      </div>
+                    ))}
+                    {aiStreaming && aiMessages.length > 0 && aiMessages[aiMessages.length - 1].role === "assistant" && !aiMessages[aiMessages.length - 1].text && (
+                      <div className="flex justify-start">
+                        <div className="bg-gray-50 border border-gray-100 rounded-xl rounded-bl-sm px-3 py-2">
+                          <div className="flex gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-gray-300 animate-bounce" style={{ animationDelay: "0ms" }} />
+                            <span className="w-1.5 h-1.5 rounded-full bg-gray-300 animate-bounce" style={{ animationDelay: "150ms" }} />
+                            <span className="w-1.5 h-1.5 rounded-full bg-gray-300 animate-bounce" style={{ animationDelay: "300ms" }} />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Input area */}
+                  <div className="shrink-0 border-t border-gray-100 px-3 py-2.5 bg-white">
+                    {aiMessages.length > 0 && (
+                      <button onClick={() => { setAiMessages([]); if (aiAbortRef.current) aiAbortRef.current.abort(); }}
+                        className="text-[9px] text-gray-400 hover:text-gray-600 mb-1.5 cursor-pointer flex items-center gap-1">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M8 6V4h8v2m-7 5v6m4-6v6M5 6l1 14h12l1-14" /></svg>
+                        Clear chat
+                      </button>
+                    )}
+                    <div className="flex gap-1.5 items-end">
+                      <textarea
+                        value={aiInput}
+                        onChange={e => setAiInput(e.target.value)}
+                        onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendAiMessage(aiInput); } }}
+                        placeholder={selProduct ? `Ask about ${selProduct.name}...` : selApp ? `Ask about ${selApp.name}...` : "Ask about your data mesh..."}
+                        className="flex-1 resize-none rounded-lg border border-gray-200 px-2.5 py-2 text-[11px] placeholder:text-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
+                        style={{ color: cfg.text, minHeight: 36, maxHeight: 100 }}
+                        rows={1}
+                      />
+                      <button
+                        onClick={() => aiStreaming ? aiAbortRef.current?.abort() : sendAiMessage(aiInput)}
+                        disabled={!aiStreaming && !aiInput.trim()}
+                        className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                        style={{ background: aiStreaming ? "#ef4444" : "#1a1a1a", color: "white" }}>
+                        {aiStreaming ? (
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="white"><rect x="6" y="6" width="12" height="12" rx="2" /></svg>
+                        ) : (
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
+                        )}
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1.5">
+                      <span className="text-[8px] text-gray-300">Gemini 2.5 Flash-Lite</span>
+                      {selProduct && <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-400 font-medium">Context: {selProduct.name}</span>}
+                      {selApp && <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-400 font-medium">Context: {selApp.name}</span>}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
           {qualityDrilldown && (() => {
             const qd = cfg.qualityPanel;
@@ -6665,21 +5763,68 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
             </div>
             );
           })()}
+          </div>
+          </div>
         </div>
       </div>
+    </div>
 
-      {/* Bottom Description */}
-      <section className="border-t border-gray-100 bg-white">
-        <div className="max-w-[1200px] mx-auto px-8 py-14">
-          <h2 className="text-[26px] font-bold mb-2" style={{ color: cfg.text }}>How to Read MeshAtlas</h2>
-          <p className="text-[14px] text-gray-500 leading-[1.8] mb-10 max-w-[680px]">This visualization maps Orange Co&apos;s enterprise data mesh as concentric arcs. Data flows inward from source applications at the outermost ring through three layers of data products.</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-10">
-            {([{ title: "Applications", desc: "Outermost arc \u2014 source systems in circular clusters, sub-grouped by type.", color: cfg.layerColors.APPS }, { title: "Source Products", desc: "Raw data products aligned 1:1 with applications.", color: cfg.layerColors.SOURCE_ALIGNED }, { title: "Business Products", desc: "Transformed, enriched cross-domain products with nested upstream dots.", color: cfg.layerColors.BUSINESS }, { title: "Consumer Products", desc: "Innermost arc \u2014 ready-to-consume products with nested upstream dots.", color: cfg.layerColors.CONSUMER_ALIGNED }] as const).map(l => <div key={l.title} className="rounded-xl p-5 border border-gray-100"><div className="w-3 h-3 rounded-full mb-3" style={{ background: l.color }} /><h3 className="text-[13px] font-bold mb-1.5" style={{ color: cfg.text }}>{l.title}</h3><p className="text-[11px] text-gray-500 leading-[1.7]">{l.desc}</p></div>)}
+      {/* Bottom Description — uses exact Nav background (--nav-bg from settings, e.g. #fffef5) */}
+      <section
+        className="border-t border-mesh-border"
+        style={{ background: "var(--nav-bg, var(--color-mesh-bg, #f4f4f4))" }}
+      >
+        <div className="max-w-[1728px] mx-auto px-3 py-12">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="rounded-2xl border border-mesh-border bg-white/85 backdrop-blur-[2px] p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
+              <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-mesh-accent mb-2">About</div>
+              <div className="space-y-3 text-[12px] text-mesh-text-muted leading-[1.85]">
+                <p>
+                  Created by Naveen Mithare, MeshAtlas is a Data Mesh Observability personal project focused on making
+                  enterprise metadata easier to understand and explore.
+                </p>
+                <p>
+                  It brings lineage, quality, ownership, and health into one interactive map so both business and
+                  technical teams can quickly understand how the mesh is behaving.
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-mesh-border bg-white/85 backdrop-blur-[2px] p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
+              <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-mesh-accent mb-2">Data &amp; Methodology</div>
+              <div className="space-y-3 text-[11px] text-mesh-text-muted leading-[1.8]">
+                <p>
+                  The dataset is generated by AI to mock a realistic enterprise data mesh. Applications produce
+                  source-aligned products, source products feed business products, and business products feed
+                  consumer-facing products through explicit lineage edges.
+                </p>
+                <p>
+                  The radial layout encodes this upstream-to-downstream progression from the outer ring toward the
+                  inner ring. Flow lines show dependency paths, while the right-hand analytical views expose quality,
+                  cost, and pipeline context for each selected node.
+                </p>
+                <p>
+                  This combined topology + context approach improves observability by making impact analysis faster:
+                  teams can see where issues originate, what downstream assets are exposed, and which domains carry
+                  concentrated operational risk.
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-mesh-border bg-white/85 backdrop-blur-[2px] p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
+              <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-mesh-accent mb-2">How to Use</div>
+              <div className="space-y-2.5 text-[11px] text-mesh-text-muted leading-[1.75]">
+                <p><strong className="text-mesh-text font-semibold">Search products</strong> to jump directly to a data product and center your analysis.</p>
+                <p><strong className="text-mesh-text font-semibold">Click nodes</strong> to inspect lineage, quality posture, and pipeline implications in the right panel.</p>
+                <p><strong className="text-mesh-text font-semibold">Trace flows radially</strong> from upstream application edges to downstream consumer products to understand blast radius and dependency depth.</p>
+                <p><strong className="text-mesh-text font-semibold">Ask AI</strong> for deeper insights — use the AI chat panel to ask questions about any product, domain, or lineage path and get contextual answers grounded in the mesh data.</p>
+              </div>
+            </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            <div className="rounded-xl p-5 border border-gray-100"><h3 className="text-[13px] font-bold mb-2" style={{ color: cfg.text }}>Pipeline Health</h3><div className="space-y-2 text-[11px] text-gray-500"><div className="flex items-center gap-2"><span className="w-8 h-0.5 rounded" style={{ background: cfg.green }} /> Healthy</div><div className="flex items-center gap-2"><span className="w-8 h-0.5 rounded" style={{ background: cfg.red }} /> Broken</div></div></div>
-            <div className="rounded-xl p-5 border border-gray-100"><h3 className="text-[13px] font-bold mb-2" style={{ color: cfg.text }}>Data Quality</h3><div className="space-y-1.5 text-[10px] text-gray-500">{DQ_LABELS.map(dq => <div key={dq.key} className="flex items-start gap-1.5"><span className="font-semibold text-gray-700 shrink-0">{dq.label}:</span> {dq.desc}</div>)}</div></div>
-            <div className="rounded-xl p-5 border border-gray-100"><h3 className="text-[13px] font-bold mb-2" style={{ color: cfg.text }}>Interaction</h3><div className="space-y-2 text-[11px] text-gray-500 leading-[1.7]"><p><strong className="text-gray-700">Search</strong> to find products or apps.</p><p><strong className="text-gray-700">Click</strong> any bubble for details + quality metrics.</p><p><strong className="text-gray-700">Gear icon</strong> opens the playground controls.</p></div></div>
+
+          <div className="mt-5 pt-4 border-t border-mesh-border/80 text-[11px] text-mesh-text-muted flex flex-wrap items-center justify-between gap-2">
+            <span>© {new Date().getFullYear()} Naveen Mithare. All rights reserved.</span>
+            <span>Built with love by Naveen ❤️</span>
           </div>
         </div>
       </section>

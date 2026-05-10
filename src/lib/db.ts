@@ -7,7 +7,6 @@ export function getDb(): Database.Database {
   if (!db) {
     const dbPath = path.join(process.cwd(), "db", "mesh_metadata.db");
     db = new Database(dbPath, { readonly: true });
-    db.pragma("journal_mode = WAL");
   }
   return db;
 }

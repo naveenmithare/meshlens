@@ -65,7 +65,9 @@ SELECT
   NULL AS source_id,
   NULL AS target_id,
   NULL AS edge_type,
-  NULL AS edge_desc
+  NULL AS edge_desc,
+  NULL AS edge_status,
+  NULL AS status_reason
 FROM data_product dp
 JOIN domain d ON d.id = dp.domain_id
 UNION ALL
@@ -82,7 +84,9 @@ SELECT
   le.source_product_id AS source_id,
   le.target_product_id AS target_id,
   le.edge_type,
-  le.description AS edge_desc
+  le.description AS edge_desc,
+  le.edge_status,
+  le.status_reason
 FROM lineage_edge le;
 
 DROP VIEW IF EXISTS v_exec_kpis;

@@ -17,7 +17,7 @@ db.exec(`
 `);
 
 const applied = new Set(
-  db.prepare("SELECT filename FROM _migrations").all().map((r: any) => r.filename)
+  db.prepare("SELECT filename FROM _migrations").all().map((r) => (r as { filename: string }).filename)
 );
 
 const files = fs

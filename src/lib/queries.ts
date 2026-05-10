@@ -1,41 +1,64 @@
 import { getDb } from "./db";
+import type {
+  MeshOverviewRow,
+  DomainHealthRow,
+  ExecKpisRow,
+  LineageGraphRow,
+  LineageNode,
+  LineageEdge,
+  PipelineStatusRow,
+  DataProductRow,
+  ApplicationRow,
+  GovernancePolicyRow,
+  ProductPipelineStatusRow,
+  ProductPipelineRunRow,
+  SyncLogRow,
+  ConnectionHealthRow,
+  AppProductLink,
+  ProductLineageSummary,
+} from "./db-types";
 
-export function getMeshOverview() {
-  return getDb().prepare("SELECT * FROM v_mesh_overview").get();
+export function getMeshOverview(): MeshOverviewRow | undefined {
+  return getDb().prepare("SELECT * FROM v_mesh_overview").get() as MeshOverviewRow | undefined;
 }
 
-export function getDomainHealth() {
-  return getDb().prepare("SELECT * FROM v_domain_health").all();
+export function getDomainHealth(): DomainHealthRow[] {
+  return getDb().prepare("SELECT * FROM v_domain_health").all() as DomainHealthRow[];
 }
 
-export function getExecKpis() {
-  return getDb().prepare("SELECT * FROM v_exec_kpis").get();
+export function getExecKpis(): ExecKpisRow | undefined {
+  return getDb().prepare("SELECT * FROM v_exec_kpis").get() as ExecKpisRow | undefined;
 }
 
-export function getLineageGraph() {
-  const rows = getDb().prepare("SELECT * FROM v_lineage_graph").all() as any[];
-  const nodes = rows.filter((r) => r.node_type === "product").map((r) => ({
-    id: r.node_id,
-    label: r.node_label,
-    tier: r.tier,
-    qualityScore: r.quality_score,
-    productType: r.product_type,
-    domainId: r.domain_id,
-    domainName: r.domain_name,
-    color: r.color_hex,
-  }));
-  const edges = rows.filter((r) => r.node_type === "edge").map((r) => ({
-    id: r.node_id,
-    source: r.source_id,
-    target: r.target_id,
-    edgeType: r.edge_type,
-    label: r.node_label,
-  }));
+export function getLineageGraph(): { nodes: LineageNode[]; edges: LineageEdge[] } {
+  const rows = getDb().prepare("SELECT * FROM v_lineage_graph").all() as LineageGraphRow[];
+  const nodes: LineageNode[] = rows
+    .filter((r) => r.node_type === "product")
+    .map((r) => ({
+      id: r.node_id,
+      label: r.node_label ?? "",
+      qualityScore: r.quality_score ?? 0,
+      productType: r.product_type ?? "",
+      domainId: r.domain_id ?? "",
+      domainName: r.domain_name ?? "",
+      color: r.color_hex ?? "",
+    }));
+  const edges: LineageEdge[] = rows
+    .filter((r) => r.node_type === "edge")
+    .map((r) => ({
+      id: r.node_id,
+      source: r.source_id ?? "",
+      target: r.target_id ?? "",
+      edgeType: r.edge_type ?? "",
+      label: r.node_label ?? "",
+      edgeStatus: (r.edge_status || "HEALTHY") as "HEALTHY" | "BROKEN" | "WARNING",
+      statusReason: r.status_reason || null,
+    }));
   return { nodes, edges };
 }
 
-export function getPipelineStatus() {
-  return getDb().prepare("SELECT * FROM v_pipeline_status").all();
+export function getPipelineStatus(): PipelineStatusRow[] {
+  return getDb().prepare("SELECT * FROM v_pipeline_status").all() as PipelineStatusRow[];
 }
 
 export function getDailyVolume() {
@@ -46,23 +69,23 @@ export function getDomains() {
   return getDb().prepare("SELECT * FROM domain ORDER BY name").all();
 }
 
-export function getDataProducts(domainId?: string) {
+export function getDataProducts(domainId?: string): DataProductRow[] {
   if (domainId) {
     return getDb()
       .prepare(
         `SELECT dp.*, d.name AS domain_name, d.color_hex
          FROM data_product dp JOIN domain d ON d.id = dp.domain_id
-         WHERE dp.domain_id = ? ORDER BY dp.product_type, dp.tier, dp.name`
+         WHERE dp.domain_id = ? ORDER BY dp.product_type, dp.name`
       )
-      .all(domainId);
+      .all(domainId) as DataProductRow[];
   }
   return getDb()
     .prepare(
       `SELECT dp.*, d.name AS domain_name, d.color_hex
        FROM data_product dp JOIN domain d ON d.id = dp.domain_id
-       ORDER BY dp.product_type, dp.tier, dp.name`
+       ORDER BY dp.product_type, dp.name`
     )
-    .all();
+    .all() as DataProductRow[];
 }
 
 export function getRecentErrors(limit = 20) {
@@ -94,7 +117,7 @@ export function getSchemaChanges(limit = 30) {
     .all(limit);
 }
 
-export function getGovernancePolicies() {
+export function getGovernancePolicies(): GovernancePolicyRow[] {
   return getDb()
     .prepare(
       `SELECT gp.*, d.name AS domain_name
@@ -102,22 +125,10 @@ export function getGovernancePolicies() {
        LEFT JOIN domain d ON d.id = gp.domain_id
        ORDER BY gp.scope, gp.name`
     )
-    .all();
+    .all() as GovernancePolicyRow[];
 }
 
-export function getConsumers() {
-  return getDb()
-    .prepare(
-      `SELECT dpc.*, dp.name AS product_name, dp.product_type, dp.tier, d.name AS domain_name, d.color_hex
-       FROM data_product_consumer dpc
-       JOIN data_product dp ON dp.id = dpc.data_product_id
-       JOIN domain d ON d.id = dp.domain_id
-       ORDER BY dp.name`
-    )
-    .all();
-}
-
-export function getProductLineageSummary() {
+export function getProductLineageSummary(): ProductLineageSummary[] {
   return getDb()
     .prepare(
       `SELECT
@@ -128,10 +139,10 @@ export function getProductLineageSummary() {
        JOIN data_product tgt ON tgt.id = le.target_product_id
        GROUP BY tgt.id`
     )
-    .all() as { product_id: string; source_names: string }[];
+    .all() as ProductLineageSummary[];
 }
 
-export function getAppProductLinks() {
+export function getAppProductLinks(): AppProductLink[] {
   return getDb()
     .prepare(
       `SELECT DISTINCT a.id AS app_id, dps.data_product_id AS product_id
@@ -141,10 +152,10 @@ export function getAppProductLinks() {
        JOIN data_product dp ON dp.id = dps.data_product_id
        WHERE dp.product_type = 'SOURCE_ALIGNED'`
     )
-    .all() as { app_id: string; product_id: string }[];
+    .all() as AppProductLink[];
 }
 
-export function getApplicationsWithConnections() {
+export function getApplicationsWithConnections(): ApplicationRow[] {
   return getDb()
     .prepare(
       `SELECT a.id, a.name, a.app_type, a.vendor, a.description, a.environment,
@@ -157,6 +168,50 @@ export function getApplicationsWithConnections() {
        JOIN destination dest ON dest.id = c.destination_id
        ORDER BY d.name, a.name`
     )
-    .all();
+    .all() as ApplicationRow[];
 }
 
+export function getProductPipelineStatus(): ProductPipelineStatusRow[] {
+  return getDb().prepare("SELECT * FROM v_product_pipeline_status").all() as ProductPipelineStatusRow[];
+}
+
+export function getProductPipelineLogs(productId: string): ProductPipelineRunRow[] {
+  return getDb()
+    .prepare(
+      `SELECT * FROM product_pipeline_run
+       WHERE data_product_id = ?
+       ORDER BY started_at DESC`
+    )
+    .all(productId) as ProductPipelineRunRow[];
+}
+
+export function getAllProductPipelineRuns(): ProductPipelineRunRow[] {
+  return getDb()
+    .prepare("SELECT * FROM product_pipeline_run ORDER BY data_product_id, started_at")
+    .all() as ProductPipelineRunRow[];
+}
+
+export function getRecentSyncLogs(): SyncLogRow[] {
+  return getDb()
+    .prepare(
+      `SELECT sl.id, c.application_id AS app_id, sl.event_type, sl.message,
+              sl.rows_synced, sl.duration_sec, sl.started_at, sl.completed_at
+       FROM sync_log sl
+       JOIN connection c ON c.id = sl.connection_id
+       ORDER BY sl.started_at DESC`
+    )
+    .all() as SyncLogRow[];
+}
+
+export function getConnectionHealth(): ConnectionHealthRow[] {
+  return getDb()
+    .prepare(
+      `SELECT ph.connection_id, c.application_id AS app_id,
+              ph.status, ph.measured_at, ph.last_success_at,
+              ph.failure_streak, ph.avg_latency_sec
+       FROM pipeline_health ph
+       JOIN connection c ON c.id = ph.connection_id
+       ORDER BY ph.measured_at DESC`
+    )
+    .all() as ConnectionHealthRow[];
+}

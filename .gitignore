@@ -30,8 +30,9 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -44,3 +45,12 @@ next-env.d.ts
 db/mesh_metadata.db
 db/mesh_metadata.db-shm
 db/mesh_metadata.db-wal
+db/meshlens.db
+/*.db
+
+# dev artifacts
+/exports/
+/db/audit_query_outputs/
+/screenshots/
+/screenshots-intro/
+/docs/

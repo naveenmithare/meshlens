@@ -8,6 +8,10 @@ import {
   getExecKpis,
   getAppProductLinks,
   getPipelineStatus,
+  getProductPipelineStatus,
+  getAllProductPipelineRuns,
+  getRecentSyncLogs,
+  getConnectionHealth,
 } from "@/lib/queries";
 import MeshAtlasClient from "./MeshAtlasClient";
 
@@ -16,14 +20,18 @@ export const revalidate = 3600;
 
 export default function MeshAtlasPage() {
   const graph = getLineageGraph();
-  const overview = getMeshOverview() as any;
-  const domains = getDomainHealth() as any[];
-  const apps = getApplicationsWithConnections() as any[];
-  const products = getDataProducts() as any[];
-  const policies = getGovernancePolicies() as any[];
-  const execKpis = getExecKpis() as any;
+  const overview = getMeshOverview();
+  const domains = getDomainHealth();
+  const apps = getApplicationsWithConnections();
+  const products = getDataProducts();
+  const policies = getGovernancePolicies();
+  const execKpis = getExecKpis();
   const appProductLinks = getAppProductLinks();
-  const pipelineStatus = getPipelineStatus() as any[];
+  const pipelineStatus = getPipelineStatus();
+  const productPipelineStatus = getProductPipelineStatus();
+  const productPipelineRuns = getAllProductPipelineRuns();
+  const recentSyncLogs = getRecentSyncLogs();
+  const connectionHealth = getConnectionHealth();
 
   return (
     <MeshAtlasClient
@@ -36,6 +44,10 @@ export default function MeshAtlasPage() {
       execKpis={execKpis}
       appProductLinks={appProductLinks}
       pipelineStatus={pipelineStatus}
+      productPipelineStatus={productPipelineStatus}
+      productPipelineRuns={productPipelineRuns}
+      recentSyncLogs={recentSyncLogs}
+      connectionHealth={connectionHealth}
     />
   );
 }

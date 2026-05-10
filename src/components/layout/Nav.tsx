@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
+import { IS_AUTHORING } from "@/lib/authoring";
 
 const links = [
   { href: "/", label: "Introduction" },
@@ -53,21 +54,43 @@ function saveSettings(s: SavedSettings) {
 export default function Nav() {
   const pathname = usePathname();
   const [showSettings, setShowSettings] = useState(false);
-  const [activeFont, setActiveFont] = useState("Inter");
-  const [accentHex, setAccentHex] = useState("#56B265");
-  const [bgHex, setBgHex] = useState("#f4f4f4");
-  const settingsRef = useRef<HTMLDivElement>(null);
-  const initialised = useRef(false);
-
-  useEffect(() => {
-    if (initialised.current) return;
-    initialised.current = true;
+  const [activeFont, setActiveFont] = useState(() => {
     const s = loadSettings();
-    applyAccent(s.accent, false);
-    applyBgColor(s.bg, false);
     const font = FONT_OPTIONS.find((f) => f.dataAttr === s.font) ?? FONT_OPTIONS[0];
-    applyFont(font, false);
+    return font.name;
+  });
+  const [accentHex, setAccentHex] = useState(() => loadSettings().accent);
+  const [bgHex, setBgHex] = useState(() => loadSettings().bg);
+  const settingsRef = useRef<HTMLDivElement>(null);
+
+  const persist = useCallback((partial: Partial<SavedSettings>) => {
+    const prev = loadSettings();
+    saveSettings({ ...prev, ...partial });
   }, []);
+
+  const applyAccent = useCallback((hex: string, save = true) => {
+    setAccentHex(hex);
+    if (save) persist({ accent: hex });
+  }, [persist]);
+
+  const applyBgColor = useCallback((hex: string, save = true) => {
+    setBgHex(hex);
+    if (save) persist({ bg: hex });
+  }, [persist]);
+
+  const applyFont = useCallback((font: (typeof FONT_OPTIONS)[number], save = true) => {
+    setActiveFont(font.name);
+    if (save) persist({ font: font.dataAttr });
+  }, [persist]);
+
+  useLayoutEffect(() => {
+    document.documentElement.style.setProperty("--color-mesh-accent", accentHex);
+    document.documentElement.style.setProperty("--color-mesh-accent-dim", `${accentHex}1a`);
+    document.body.style.background = bgHex;
+    document.documentElement.style.setProperty("--nav-bg", bgHex);
+    const font = FONT_OPTIONS.find((f) => f.name === activeFont) ?? FONT_OPTIONS[0];
+    document.documentElement.setAttribute("data-font", font.dataAttr);
+  }, [accentHex, bgHex, activeFont]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -78,31 +101,6 @@ export default function Nav() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-  function persist(partial: Partial<SavedSettings>) {
-    const prev = loadSettings();
-    saveSettings({ ...prev, ...partial });
-  }
-
-  function applyAccent(hex: string, save = true) {
-    document.documentElement.style.setProperty("--color-mesh-accent", hex);
-    document.documentElement.style.setProperty("--color-mesh-accent-dim", `${hex}1a`);
-    setAccentHex(hex);
-    if (save) persist({ accent: hex });
-  }
-
-  function applyBgColor(hex: string, save = true) {
-    document.body.style.background = hex;
-    document.documentElement.style.setProperty("--nav-bg", hex);
-    setBgHex(hex);
-    if (save) persist({ bg: hex });
-  }
-
-  function applyFont(font: (typeof FONT_OPTIONS)[number], save = true) {
-    document.documentElement.setAttribute("data-font", font.dataAttr);
-    setActiveFont(font.name);
-    if (save) persist({ font: font.dataAttr });
-  }
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50">
@@ -139,7 +137,7 @@ export default function Nav() {
           })}
         </div>
 
-        <div className="relative pr-2" ref={settingsRef}>
+        {IS_AUTHORING && <div className="relative pr-2" ref={settingsRef}>
           <button onClick={() => setShowSettings(!showSettings)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] text-gray-500 hover:text-mesh-text hover:bg-gray-100/80 transition-all duration-200"
             title="Customize appearance">
@@ -234,7 +232,7 @@ export default function Nav() {
               </div>
             </div>
           )}
-        </div>
+        </div>}
       </div>
       </div>
     </nav>

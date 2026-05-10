@@ -12,21 +12,14 @@ export const dynamic = "force-static";
 export const revalidate = 3600;
 
 export default function Home() {
-  const overview = getMeshOverview() as any;
-  const domains = getDomainHealth() as any[];
-  const apps = getApplicationsWithConnections() as any[];
-  const products = getDataProducts() as any[];
-  const policies = getGovernancePolicies() as any[];
-  const lineage = getProductLineageSummary();
-
   return (
     <IntroClient
-      overview={overview}
-      domains={domains}
-      apps={apps}
-      products={products}
-      policies={policies}
-      lineage={lineage}
+      overview={getMeshOverview() as Parameters<typeof IntroClient>[0]["overview"]}
+      domains={getDomainHealth() as Parameters<typeof IntroClient>[0]["domains"]}
+      apps={getApplicationsWithConnections() as Parameters<typeof IntroClient>[0]["apps"]}
+      products={getDataProducts() as Parameters<typeof IntroClient>[0]["products"]}
+      policies={getGovernancePolicies() as Parameters<typeof IntroClient>[0]["policies"]}
+      lineage={getProductLineageSummary() as Parameters<typeof IntroClient>[0]["lineage"]}
     />
   );
 }

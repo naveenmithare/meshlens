@@ -26,8 +26,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${inter.variable} ${dmSans.variable} ${jakarta.variable} ${outfit.variable} ${spaceGrotesk.variable} antialiased bg-mesh-bg text-mesh-text`}>
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var r=localStorage.getItem("meshlens-settings");if(!r)return;var s=JSON.parse(r);if(s.bg){document.documentElement.style.setProperty("--nav-bg",s.bg);document.body.style.background=s.bg;}if(s.accent){document.documentElement.style.setProperty("--color-mesh-accent",s.accent);document.documentElement.style.setProperty("--color-mesh-accent-dim",s.accent+"1a");}if(s.font){document.documentElement.setAttribute("data-font",s.font);}}catch(e){}})();`,
+          }}
+        />
+      </head>
+      <body suppressHydrationWarning className={`${inter.variable} ${dmSans.variable} ${jakarta.variable} ${outfit.variable} ${spaceGrotesk.variable} antialiased bg-mesh-bg text-mesh-text`}>
         <Nav />
         <main>{children}</main>
       </body>

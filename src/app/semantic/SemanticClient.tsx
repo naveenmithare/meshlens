@@ -5,10 +5,10 @@ import { useState } from "react";
 type CatalogTab = "columns" | "sources" | "logic" | "lineage";
 
 export default function SemanticClient() {
-  const [selectedView, setSelectedView] = useState<string | null>(null);
+  const [selectedView, setSelectedView] = useState<string | null>(() => VIEWS_DATA[0]?.name ?? null);
   const [catalogTab, setCatalogTab] = useState<CatalogTab>("columns");
   const views = VIEWS_DATA;
-  const activeView = views.find((v) => v.name === selectedView) ?? null;
+  const activeView = views.find((v) => v.name === selectedView) ?? views[0] ?? null;
   const totalCols = views.reduce((sum, v) => sum + v.columns.length, 0);
   const uniqueSources = new Set(views.flatMap((v) => v.sources)).size;
 
@@ -118,10 +118,10 @@ export default function SemanticClient() {
       </section>
 
       {/* ═══ View Catalog ═══ */}
-      <section className="max-w-[1200px] mx-auto px-8 pb-16">
+      <section className="max-w-[1200px] mx-auto px-8 pb-16 min-w-0">
         <div className="flex items-end justify-between mb-2">
           <h2 className="text-xl font-semibold text-mesh-text">View Catalog</h2>
-          <div className="flex items-center gap-3 text-[11px] text-mesh-text-muted/40">
+          <div className="flex items-center gap-3 text-[11px] text-mesh-text-muted/50">
             <span className="flex items-center gap-1.5">
               <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="currentColor" opacity={0.4}><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z" /></svg>
               {views.length} views
@@ -133,47 +133,56 @@ export default function SemanticClient() {
           </div>
         </div>
         <p className="text-base text-mesh-text-muted leading-relaxed mb-6">
-          Analytical views that power MeshLens dashboards. Select a view to explore its schema,
-          upstream lineage, and query logic.
+          Analytical views that power MeshLens dashboards. Select a card for schema, lineage, and query logic.
         </p>
 
-        {/* View cards grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          {views.map((view) => {
-            const isActive = selectedView === view.name;
-            return (
-              <button
-                key={view.name}
-                onClick={() => { setSelectedView(isActive ? null : view.name); setCatalogTab("columns"); }}
-                className={`group text-left rounded-xl transition-all border overflow-hidden ${
-                  isActive
-                    ? "bg-white ring-1 ring-mesh-accent/15"
-                    : "bg-white border-mesh-border hover:border-mesh-border hover:bg-white"
-                }`}
-                style={isActive ? { borderColor: `${view.color}30` } : undefined}
-              >
-                <div className="h-1 w-full" style={{ backgroundColor: isActive ? view.color : "transparent" }} />
-                <div className="px-4 pt-3 pb-4">
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <span className={`text-[11px] font-bold font-mono leading-tight ${isActive ? "text-mesh-accent" : "text-mesh-text"}`}>
+        {/* Rail: viewport shows ~4 cards + half of the 5th (peek) — scroll for the rest */}
+        <div className="mb-6 min-w-0">
+          <div
+            className="w-full min-w-0 overflow-x-auto overscroll-x-contain light-h-scroll"
+            style={{ maxWidth: "min(100%, calc(4 * 238px + 3 * 1.25rem + 119px))" }}
+          >
+            <div className="flex gap-5 py-1 pr-1 w-max">
+              {views.map((view) => {
+                const isActive = selectedView === view.name;
+                return (
+                  <button
+                    key={view.name}
+                    type="button"
+                    onClick={() => { setSelectedView(view.name); setCatalogTab("columns"); }}
+                    className={`group relative cursor-pointer text-left rounded-[1.5rem] shrink-0 w-[238px] px-5 pt-5 pb-5 transition-[box-shadow,transform,background-color] duration-200 ease-out ${
+                      isActive
+                        ? "bg-white shadow-[0_12px_40px_-4px_rgba(0,0,0,0.12)] -translate-y-0.5"
+                        : "bg-white/85 shadow-[0_2px_16px_-4px_rgba(0,0,0,0.06)] hover:shadow-[0_10px_32px_-6px_rgba(0,0,0,0.12)] hover:bg-white hover:-translate-y-0.5"
+                    }`}
+                  >
+                    <span
+                      className="pointer-events-none absolute top-3.5 right-3.5 flex h-8 w-8 items-center justify-center rounded-full bg-mesh-text/[0.07] text-mesh-text/75 opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100"
+                      aria-hidden
+                    >
+                      <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                        <path d="M4.037 4.688a.495.495 0 0 1 .651-.651l16 6.5a.5.5 0 0 1-.063.947l-6.124 1.872a.5.5 0 0 0-.306.306l-1.872 6.124a.5.5 0 0 1-.947-.063l-6.5-16z" />
+                      </svg>
+                    </span>
+                    <div
+                      className="h-[3px] w-10 rounded-full mb-4 transition-opacity duration-300"
+                      style={{
+                        backgroundColor: view.color,
+                        opacity: isActive ? 1 : 0.35,
+                      }}
+                    />
+                    <div className={`text-[13px] font-semibold font-mono tracking-tight mb-2 pr-8 ${isActive ? "text-mesh-text" : "text-mesh-text/90"}`}>
                       {view.name}
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-mesh-text-muted leading-snug line-clamp-2 mb-3 min-h-[28px]">{view.desc}</p>
-                  <div className="flex items-center gap-4 text-[9px] text-mesh-text-muted/40">
-                    <span className="flex items-center gap-1">
-                      <svg viewBox="0 0 24 24" className="w-3 h-3" fill="currentColor" opacity={0.3}><path d="M3 3h7v7H3zm11 0h7v7h-7zM3 14h7v7H3zm11 0h7v7h-7z" /></svg>
-                      {view.columns.length} cols
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <svg viewBox="0 0 24 24" className="w-3 h-3" fill="currentColor" opacity={0.3}><path d="M12 3C7.58 3 4 4.79 4 7v10c0 2.21 3.58 4 8 4s8-1.79 8-4V7c0-2.21-3.58-4-8-4z" /></svg>
-                      {view.sources.length} src
-                    </span>
-                  </div>
-                </div>
-              </button>
-            );
-          })}
+                    </div>
+                    <p className="text-[11px] text-mesh-text-muted leading-[1.6] line-clamp-2 min-h-[36px] mb-4">{view.desc}</p>
+                    <p className="text-[11px] text-mesh-text-muted/70 tabular-nums">
+                      {view.columns.length} columns · {view.sources.length} sources
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
 
         {/* Detail panel (expands below cards) */}
@@ -338,43 +347,28 @@ export default function SemanticClient() {
         )}
       </section>
 
-      {/* Adoption */}
-      <section className="max-w-[1200px] mx-auto px-8 pb-24">
-        <h2 className="text-xl font-semibold text-mesh-text mb-8">Adopting This Schema</h2>
-        <div className="grid grid-cols-2 gap-6">
-          <div className="bg-white border border-mesh-border rounded-xl p-6">
-            <h3 className="text-base font-bold text-mesh-accent mb-3">Vendor-Agnostic by Design</h3>
-            <p className="text-xs text-mesh-text-muted leading-relaxed mb-5">
-              The schema uses standard SQL types, CHECK constraints, and foreign keys — no vendor-specific
-              extensions. Deploy on any warehouse and the table structure, relationships, and views
-              remain identical.
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {["Snowflake", "PostgreSQL", "BigQuery", "Redshift", "Databricks", "MySQL", "SQLite"].map((db) => (
-                <span key={db} className="text-xs font-mono text-mesh-text-muted bg-mesh-bg-light border border-white/[0.05] rounded px-2.5 py-1">{db}</span>
-              ))}
-            </div>
-          </div>
-          <div className="bg-white border border-mesh-border rounded-xl p-6">
-            <h3 className="text-base font-bold text-mesh-accent mb-3">Integration Points</h3>
-            <p className="text-xs text-mesh-text-muted leading-relaxed mb-5">
-              Populate the core tables from your metadata catalog, sync tools, and orchestrators.
-              Operational tables can be fed from webhook events or batch ETL.
-            </p>
-            <div className="space-y-2.5">
-              {[
-                { label: "Metadata Catalogs", tools: "Atlan · DataHub · Collibra · OpenMetadata" },
-                { label: "Sync & Ingestion", tools: "SaaS ELT Tools · Cloud Warehouse · Custom ETL" },
-                { label: "Orchestration", tools: "Airflow · dbt · Dagster · Prefect" },
-                { label: "Governance", tools: "Privacera · Immuta · Apache Ranger" },
-              ].map((row) => (
-                <div key={row.label} className="flex items-baseline gap-3">
-                  <span className="text-xs font-bold text-mesh-text shrink-0 w-32">{row.label}</span>
-                  <span className="text-xs text-mesh-text-muted font-mono">{row.tools}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+      {/* Adoption — MeshLens semantic model (full column width, intro-style body) */}
+      <section className="max-w-[1200px] mx-auto px-8 pb-24 min-w-0 border-t border-mesh-border pt-16">
+        <h2 className="text-xl font-semibold text-mesh-text mb-6">Adopting the MeshLens Semantic Model</h2>
+        <div className="space-y-5 text-[16px] text-mesh-text-muted leading-[1.9]">
+          <p>
+            The MeshLens semantic model provides a practical, enterprise-ready foundation for standardizing mesh metadata
+            across domains, data products, lineage, operational health, and governance. Its schema and views are designed to
+            be portable across platforms such as Snowflake, BigQuery, Postgres, and other SQL-based environments, so
+            architecture and engineering teams can adapt them to their own naming standards, ingestion pipelines, and
+            governance requirements. Rather than forcing each tool or team to redefine core concepts, the model establishes
+            a consistent structure that can support reporting, observability, lineage analysis, and platform operations from
+            a shared semantic layer.
+          </p>
+          <p>
+            In practice, enterprises typically map their existing metadata, catalog, orchestration, and warehouse signals
+            into these reference entities, then extend the model with additional attributes or bridge tables where needed.
+            Core views such as <span className="font-mono text-[13px] text-mesh-text">v_mesh_overview</span> and{" "}
+            <span className="font-mono text-[13px] text-mesh-text">v_lineage_graph</span> help transform raw metadata into
+            reusable analytical outputs for BI, engineering dashboards, and custom applications, while keeping product-level
+            lineage and operational signals aligned with business ownership and governance. The result is a common semantic
+            contract for mesh observability that can be queried by any team and hosted on any enterprise data stack.
+          </p>
         </div>
       </section>
     </div>
@@ -398,9 +392,9 @@ const SCHEMA_GROUPS = [
   },
   {
     title: "Data Mesh Layer", color: "#22c55e",
-    desc: "The product layer — every data product has a type, tier, quality score, SLA, and directional lineage edges.",
+    desc: "The product layer — every data product has a type, quality score, SLA, and directional lineage edges.",
     tables: [
-      { name: "data_product", cols: ["id PK", "name", "domain_id FK", "product_type CHECK", "tier CHECK", "quality_score CHECK", "sla_freshness", "owner", "description"], purpose: "The mesh quantum — typed, tiered, quality-scored, and SLA-bound" },
+      { name: "data_product", cols: ["id PK", "name", "domain_id FK", "product_type CHECK", "quality_score CHECK", "sla_freshness", "owner", "description"], purpose: "The mesh quantum — typed, quality-scored, and SLA-bound" },
       { name: "lineage_edge", cols: ["id PK", "source_product_id FK", "target_product_id FK", "edge_type CHECK", "description"], purpose: "Directed edges (FEEDS, DERIVES, AGGREGATES) between products" },
       { name: "data_product_source", cols: ["data_product_id FK", "connection_id FK", "table_name"], purpose: "Junction linking products to upstream connections and tables" },
       { name: "data_product_consumer", cols: ["id PK", "data_product_id FK", "consumer_name", "consumer_type CHECK", "team", "access_frequency CHECK"], purpose: "Who/what consumes each product — dashboards, ML models, APIs" },
@@ -494,8 +488,8 @@ const VIEWS_DATA = [
   },
   {
     name: "v_exec_kpis", color: "#00d8ff",
-    desc: "Executive KPI scorecard — uptime, latency, tiers, breaches",
-    columns: ["total_pipelines", "active_pipelines", "uptime_pct", "avg_latency_sec", "total_products", "gold_products", "silver_products", "bronze_products", "total_domains", "total_monthly_cost", "open_breaches", "critical_breaches", "total_consumers", "gold_avg_quality"],
+    desc: "Executive KPI scorecard — uptime, latency, product mix, and breaches",
+    columns: ["total_pipelines", "active_pipelines", "uptime_pct", "avg_latency_sec", "total_products", "source_products", "business_products", "consumer_products", "total_domains", "total_monthly_cost", "open_breaches", "critical_breaches", "total_consumers", "avg_product_quality"],
     sources: ["connection", "pipeline_health", "data_product", "domain", "sla_breach", "data_product_consumer"],
     columnDetails: [
       { name: "total_pipelines", type: "INT", desc: "Total connections" },
@@ -503,34 +497,33 @@ const VIEWS_DATA = [
       { name: "uptime_pct", type: "REAL", desc: "% of pipelines HEALTHY (latest snapshot)" },
       { name: "avg_latency_sec", type: "REAL", desc: "Average pipeline latency in seconds" },
       { name: "total_products", type: "INT", desc: "All data products" },
-      { name: "gold_products", type: "INT", desc: "Products with tier = GOLD" },
-      { name: "silver_products", type: "INT", desc: "Products with tier = SILVER" },
-      { name: "bronze_products", type: "INT", desc: "Products with tier = BRONZE" },
+      { name: "source_products", type: "INT", desc: "Products with product_type = SOURCE_ALIGNED" },
+      { name: "business_products", type: "INT", desc: "Products with product_type = BUSINESS" },
+      { name: "consumer_products", type: "INT", desc: "Products with product_type = CONSUMER_ALIGNED" },
       { name: "total_domains", type: "INT", desc: "Number of domains" },
       { name: "total_monthly_cost", type: "REAL", desc: "Summed monthly cost (non-paused)" },
       { name: "open_breaches", type: "INT", desc: "All unresolved SLA breaches" },
       { name: "critical_breaches", type: "INT", desc: "HIGH/CRITICAL unresolved breaches" },
       { name: "total_consumers", type: "INT", desc: "Registered downstream consumers" },
-      { name: "gold_avg_quality", type: "REAL", desc: "Average quality % of gold-tier products" },
+      { name: "avg_product_quality", type: "REAL", desc: "Average product quality score across all products" },
     ],
     sourceDetails: [
       { table: "connection", role: "Pipeline counts and cost aggregation", usedColumns: ["status", "monthly_cost_usd"] },
       { table: "pipeline_health", role: "Uptime and latency from latest snapshot", usedColumns: ["status", "avg_latency_sec", "measured_at"] },
-      { table: "data_product", role: "Product counts by tier and quality scores", usedColumns: ["tier", "quality_score"] },
+      { table: "data_product", role: "Product counts by product_type and quality scores", usedColumns: ["product_type", "quality_score"] },
       { table: "sla_breach", role: "Open and critical breach counts", usedColumns: ["resolved_at", "severity"] },
     ],
-    logic: "SELECT\n  (SELECT COUNT(*) FROM connection) AS total_pipelines,\n  (SELECT COUNT(*) FROM connection WHERE status = 'ACTIVE') AS active_pipelines,\n  (SELECT ROUND(AVG(CASE WHEN ph.status = 'HEALTHY' THEN 1.0 ELSE 0.0 END) * 100, 1)\n   FROM pipeline_health ph\n   WHERE ph.measured_at = (SELECT MAX(ph2.measured_at)\n     FROM pipeline_health ph2 WHERE ph2.connection_id = ph.connection_id)\n  ) AS uptime_pct,\n  (SELECT ROUND(AVG(ph.avg_latency_sec), 0)\n   FROM pipeline_health ph\n   WHERE ph.measured_at = (SELECT MAX(ph2.measured_at)\n     FROM pipeline_health ph2 WHERE ph2.connection_id = ph.connection_id)\n  ) AS avg_latency_sec,\n  (SELECT COUNT(*) FROM data_product) AS total_products,\n  (SELECT COUNT(*) FROM data_product WHERE tier = 'GOLD') AS gold_products,\n  (SELECT COUNT(*) FROM data_product WHERE tier = 'SILVER') AS silver_products,\n  (SELECT COUNT(*) FROM data_product WHERE tier = 'BRONZE') AS bronze_products,\n  (SELECT COUNT(*) FROM domain) AS total_domains,\n  (SELECT ROUND(SUM(monthly_cost_usd), 0) FROM connection WHERE status != 'PAUSED') AS total_monthly_cost,\n  (SELECT COUNT(*) FROM sla_breach WHERE resolved_at IS NULL) AS open_breaches,\n  (SELECT COUNT(*) FROM sla_breach WHERE severity IN ('HIGH','CRITICAL') AND resolved_at IS NULL) AS critical_breaches,\n  (SELECT COUNT(*) FROM data_product_consumer) AS total_consumers,\n  (SELECT ROUND(AVG(quality_score) * 100, 1) FROM data_product WHERE tier = 'GOLD') AS gold_avg_quality;",
+    logic: "SELECT\n  (SELECT COUNT(*) FROM connection) AS total_pipelines,\n  (SELECT COUNT(*) FROM connection WHERE status = 'ACTIVE') AS active_pipelines,\n  (SELECT ROUND(AVG(CASE WHEN ph.status = 'HEALTHY' THEN 1.0 ELSE 0.0 END) * 100, 1)\n   FROM pipeline_health ph\n   WHERE ph.measured_at = (SELECT MAX(ph2.measured_at)\n     FROM pipeline_health ph2 WHERE ph2.connection_id = ph.connection_id)\n  ) AS uptime_pct,\n  (SELECT ROUND(AVG(ph.avg_latency_sec), 0)\n   FROM pipeline_health ph\n   WHERE ph.measured_at = (SELECT MAX(ph2.measured_at)\n     FROM pipeline_health ph2 WHERE ph2.connection_id = ph.connection_id)\n  ) AS avg_latency_sec,\n  (SELECT COUNT(*) FROM data_product) AS total_products,\n  (SELECT COUNT(*) FROM data_product WHERE product_type = 'SOURCE_ALIGNED') AS source_products,\n  (SELECT COUNT(*) FROM data_product WHERE product_type = 'BUSINESS') AS business_products,\n  (SELECT COUNT(*) FROM data_product WHERE product_type = 'CONSUMER_ALIGNED') AS consumer_products,\n  (SELECT COUNT(*) FROM domain) AS total_domains,\n  (SELECT ROUND(SUM(monthly_cost_usd), 0) FROM connection WHERE status != 'PAUSED') AS total_monthly_cost,\n  (SELECT COUNT(*) FROM sla_breach WHERE resolved_at IS NULL) AS open_breaches,\n  (SELECT COUNT(*) FROM sla_breach WHERE severity IN ('HIGH','CRITICAL') AND resolved_at IS NULL) AS critical_breaches,\n  (SELECT COUNT(*) FROM data_product_consumer) AS total_consumers,\n  (SELECT ROUND(AVG(quality_score) * 100, 1) FROM data_product) AS avg_product_quality;",
   },
   {
     name: "v_lineage_graph", color: "#a78bfa",
     desc: "Product nodes and lineage edges for D3 graph rendering",
-    columns: ["node_type", "node_id", "node_label", "tier", "quality_score", "product_type", "domain_id", "domain_name", "color_hex", "source_id", "target_id", "edge_type", "edge_desc"],
+    columns: ["node_type", "node_id", "node_label", "quality_score", "product_type", "domain_id", "domain_name", "color_hex", "source_id", "target_id", "edge_type", "edge_desc"],
     sources: ["data_product", "domain", "lineage_edge"],
     columnDetails: [
       { name: "node_type", type: "TEXT", desc: "'product' or 'edge' — split by consumers" },
       { name: "node_id", type: "TEXT", desc: "Product ID or edge ID" },
       { name: "node_label", type: "TEXT", desc: "Product name or edge description" },
-      { name: "tier", type: "TEXT", desc: "GOLD/SILVER/BRONZE (products only)" },
       { name: "quality_score", type: "REAL", desc: "0.0–1.0 quality score (products only)" },
       { name: "product_type", type: "TEXT", desc: "SOURCE_ALIGNED / BUSINESS / CONSUMER_ALIGNED" },
       { name: "domain_id", type: "TEXT", desc: "Parent domain ID (products only)" },
@@ -542,11 +535,11 @@ const VIEWS_DATA = [
       { name: "edge_desc", type: "TEXT", desc: "Edge description text" },
     ],
     sourceDetails: [
-      { table: "data_product", role: "Product nodes with tier, quality, type", usedColumns: ["id", "name", "tier", "quality_score", "product_type", "domain_id"] },
+      { table: "data_product", role: "Product nodes with quality and type", usedColumns: ["id", "name", "quality_score", "product_type", "domain_id"] },
       { table: "domain", role: "Domain name and color for each product", usedColumns: ["id", "name", "color_hex"] },
       { table: "lineage_edge", role: "Edge records with source/target IDs", usedColumns: ["id", "source_product_id", "target_product_id", "edge_type", "description"] },
     ],
-    logic: "UNION ALL of two selects:\n\n1) Product nodes:\nSELECT 'product', dp.id, dp.name, dp.tier,\n  dp.quality_score, dp.product_type, d.id, d.name, d.color_hex,\n  NULL, NULL, NULL, NULL\nFROM data_product dp\nJOIN domain d ON d.id = dp.domain_id\n\n2) Lineage edges:\nSELECT 'edge', le.id, le.description, NULL, NULL,\n  NULL, NULL, NULL, NULL,\n  le.source_product_id, le.target_product_id,\n  le.edge_type, le.description\nFROM lineage_edge le;",
+    logic: "UNION ALL of two selects:\n\n1) Product nodes:\nSELECT 'product', dp.id, dp.name,\n  dp.quality_score, dp.product_type, d.id, d.name, d.color_hex,\n  NULL, NULL, NULL, NULL\nFROM data_product dp\nJOIN domain d ON d.id = dp.domain_id\n\n2) Lineage edges:\nSELECT 'edge', le.id, le.description,\n  NULL, NULL, NULL, NULL, NULL,\n  le.source_product_id, le.target_product_id,\n  le.edge_type, le.description\nFROM lineage_edge le;",
   },
   {
     name: "v_product_flow", color: "#a78bfa",
@@ -682,7 +675,7 @@ function ERDDiagram() {
   const appCols = ["id  PK", "name", "app_type", "domain_id  FK", "vendor", "environment", "created_at"];
   const connCols = ["id  PK", "application_id  FK", "destination_id  FK", "connector_type", "sync_frequency", "status", "monthly_cost_usd", "rows_per_sync_avg"];
   const destCols = ["id  PK", "name", "type", "region", "database_name", "created_at"];
-  const dpCols = ["id  PK", "name", "domain_id  FK", "product_type", "tier", "quality_score", "sla_freshness", "owner", "description"];
+  const dpCols = ["id  PK", "name", "domain_id  FK", "product_type", "quality_score", "sla_freshness", "owner", "description"];
   const leCols = ["id  PK", "source_product_id  FK", "target_product_id  FK", "edge_type", "description"];
   const slCols = ["id  PK", "connection_id  FK", "sync_id", "event_type", "message", "rows_synced", "bytes_synced", "started_at", "completed_at", "duration_sec"];
   const phCols = ["connection_id  FK", "measured_at", "status", "last_success_at", "failure_streak", "avg_latency_sec"];

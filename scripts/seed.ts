@@ -10,6 +10,7 @@ db.pragma("foreign_keys = ON");
 function uid() { return crypto.randomUUID().replace(/-/g, "").slice(0, 16); }
 function pick<T>(arr: T[]): T { return arr[Math.floor(Math.random() * arr.length)]; }
 function randBetween(min: number, max: number) { return min + Math.random() * (max - min); }
+const toSnake = (n: string) => n.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
 function dateOffset(daysAgo: number): string {
   const d = new Date(); d.setDate(d.getDate() - daysAgo);
   return d.toISOString().slice(0, 19).replace("T", " ");
@@ -394,7 +395,7 @@ const POLICIES = [
 console.log("Seeding MeshLens database...\n");
 
 // Clear in reverse FK order
-for (const t of ["sla_breach", "data_product_consumer", "governance_policy", "schema_change", "pipeline_health", "sync_daily_stats", "sync_log", "lineage_edge", "data_product_source", "data_product", "connection", "destination", "application", "domain"]) {
+for (const t of ["sla_breach", "data_product_consumer", "governance_policy", "schema_change", "pipeline_health", "sync_daily_stats", "sync_log", "product_pipeline_run", "lineage_edge", "data_product_source", "data_product", "connection", "destination", "application", "domain"]) {
   try { db.exec(`DELETE FROM ${t}`); } catch { /* table may not exist yet */ }
 }
 
@@ -431,11 +432,29 @@ const connTypes: Record<string, string[]> = {
   Streaming: ["kafka"],
 };
 const freqs = ["5min", "15min", "1hr", "6hr", "24hr"];
-const statuses = ["ACTIVE","ACTIVE","ACTIVE","ACTIVE","ACTIVE","ACTIVE","ACTIVE","PAUSED","BROKEN","ACTIVE"];
+const healthyStatuses = ["ACTIVE","ACTIVE","ACTIVE","ACTIVE","ACTIVE","ACTIVE","ACTIVE","ACTIVE","ACTIVE","ACTIVE"];
 const costs = { "5min": 450, "15min": 280, "1hr": 150, "6hr": 80, "24hr": 40 };
+
+// 6 broken app-to-source connections (1 finance, 1 sales, 1 marketing, 1 product, 1 supply-chain, 1 support)
+const BROKEN_APPS: Record<string, string> = {
+  "Zuora": "Fivetran sync error: OAuth2 refresh token expired for Zuora billing API (billing.zuora.com). HTTP 401 Unauthorized — re-authenticate in connector dashboard",
+  "Outreach": "Fivetran connector outreach_sequences: HTTP 429 Too Many Requests — rate limit 100 req/min exceeded, retry budget exhausted after 5 attempts over 25 min",
+  "Meta Ads": "Airbyte source meta-ads: Error 190 — access token invalidated by user password change. Re-authorization required at business.facebook.com/settings",
+  "Datadog": "Custom connector datadog_metrics: API quota exceeded — 429 Too Many Requests, organization daily limit of 3600 calls hit at 14:02 UTC. Resets at midnight UTC",
+  "FourKites": "Fivetran connector fourkites_visibility: ECONNREFUSED 10.42.8.91:443 — shipment tracking endpoint unreachable, possible VPN/firewall change. Last successful connection 2026-05-06 08:15 UTC",
+  "Intercom": "Airbyte source intercom_conversations: Pagination cursor expired — cursor token valid for 24h, sync exceeded window due to 2.1M conversation backlog. Requires full re-sync",
+};
+
+// 2 paused app-to-source connections (1 marketing, 1 hr)
+const PAUSED_APPS: Record<string, string> = {
+  "LinkedIn Ads": "Connector paused by data-ops admin (JIRA: OPS-4521). LinkedIn Ads API sync disabled since 2026-04-28 — quarterly API budget cap reached, re-enable after May billing cycle",
+  "Greenhouse": "Connector paused by HR team request (JIRA: HR-2201). Greenhouse ATS migration to new tenant in progress — sync will resume after cutover",
+};
 
 const insertConn = db.prepare("INSERT INTO connection (id, application_id, destination_id, connector_type, connection_name, schema_name, status, sync_frequency, setup_at, paused, monthly_cost_usd, rows_per_sync_avg) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 const connIds: string[] = [];
+const brokenConnIndices: number[] = [];
+const pausedConnIndices: number[] = [];
 
 for (let i = 0; i < APPS.length; i++) {
   const app = APPS[i];
@@ -443,16 +462,20 @@ for (let i = 0; i < APPS.length; i++) {
   const connId = `conn-${uid()}`;
   const ctype = pick(connTypes[app.app_type] || ["fivetran"]);
   const dest = pick(DESTS);
-  const status = pick(statuses);
+  const isBroken = app.name in BROKEN_APPS;
+  const isPaused = app.name in PAUSED_APPS;
+  const status = isBroken ? "BROKEN" : isPaused ? "PAUSED" : pick(healthyStatuses);
   const freq = app.app_type === "Streaming" ? "5min" : pick(freqs);
   const schema = `raw_${app.name.toLowerCase().replace(/[^a-z0-9]+/g, "_")}`;
   const cost = costs[freq as keyof typeof costs] * (0.7 + Math.random() * 0.6);
   const rowsAvg = Math.floor(randBetween(500, 200000));
 
-  insertConn.run(connId, appId, dest.id, ctype, `${app.name} → ${dest.name}`, schema, status, freq, dateOffset(Math.floor(randBetween(30, 365))), status === "PAUSED" ? 1 : 0, Math.round(cost), rowsAvg);
+  insertConn.run(connId, appId, dest.id, ctype, `${app.name} → ${dest.name}`, schema, status, freq, dateOffset(Math.floor(randBetween(30, 365))), isPaused ? 1 : 0, Math.round(cost), rowsAvg);
   connIds.push(connId);
+  if (isBroken) brokenConnIndices.push(i);
+  if (isPaused) pausedConnIndices.push(i);
 }
-console.log(`  ${connIds.length} connections`);
+console.log(`  ${connIds.length} connections (${brokenConnIndices.length} broken, ${pausedConnIndices.length} paused)`);
 
 // Data Products
 const insertDP = db.prepare("INSERT INTO data_product (id, name, domain_id, description, owner, sla_freshness, quality_score, tier, product_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
@@ -511,10 +534,78 @@ for (const dp of DATA_PRODUCTS) {
 }
 console.log(`  ${dpsCount} data product sources`);
 
-// Lineage
-const insertEdge = db.prepare("INSERT INTO lineage_edge (id, source_product_id, target_product_id, edge_type, description) VALUES (?, ?, ?, ?, ?)");
-for (const le of LINEAGE_EDGES) insertEdge.run(`edge-${uid()}`, le.source, le.target, le.type, le.desc);
-console.log(`  ${LINEAGE_EDGES.length} lineage edges`);
+// Lineage — with edge_status for pipeline failure cascade
+// Source products fed by broken/paused apps
+const brokenAppNames = new Set(Object.keys(BROKEN_APPS));
+const pausedAppNames = new Set(Object.keys(PAUSED_APPS));
+const brokenSourceProducts = new Set<string>();
+const pausedSourceProducts = new Set<string>();
+for (const dp of DATA_PRODUCTS) {
+  if (dp.product_type !== "SOURCE_ALIGNED") continue;
+  const explicitAppName = PRODUCT_TO_APP[dp.name];
+  const matchName = explicitAppName || dp.name;
+  if (brokenAppNames.has(matchName)) brokenSourceProducts.add(dp.id);
+  if (pausedAppNames.has(matchName)) pausedSourceProducts.add(dp.id);
+}
+
+// 4 independently broken source-to-business DAG edges
+// Error templates receive the real model name at generation time so names always match
+const BROKEN_DAGS: Record<string, { target: string; errorFn: (model: string) => string }> = {
+  "src-salesforce-raw": {
+    target: "biz-pipeline-forecast",
+    errorFn: (m) => `airflow.exceptions.AirflowTaskTimeout: Model ${m} exceeded SLA of 2700s (45min). Process killed (SIGKILL) — memory 4.1GB exceeded 4.0GB limit. Root cause: Salesforce Opportunity table grew from 2.1M→3.8M rows after Q2 territory realignment. DAG: dag_pipeline_forecast_daily, task: ${m}, execution_date: 2026-05-08T04:00:00+00:00`,
+  },
+  "src-amplitude-raw": {
+    target: "biz-product-usage",
+    errorFn: (m) => `dbt.exceptions.DatabaseError: 100038 (22018): Numeric value 'page_view' is not recognized. Runtime Error in model ${m} (models/staging/${m}.sql:47): column 'event_type' is of type INTEGER but expression is of type VARCHAR. Caused by Amplitude export format change on 2026-05-07. dbt run-id: 1a7c3f, node: model.meshlens.${m}`,
+  },
+};
+
+// Collect all business products that have at least one upstream broken or warning source
+const businessWithBrokenUpstream = new Set<string>();
+
+const insertEdge = db.prepare("INSERT INTO lineage_edge (id, source_product_id, target_product_id, edge_type, description, edge_status, status_reason) VALUES (?, ?, ?, ?, ?, ?, ?)");
+const edgeCounts = { HEALTHY: 0, BROKEN: 0, WARNING: 0 };
+
+// Pre-compute model names for broken DAG edges so edge status_reason matches pipeline runs
+const brokenDagEdgeReason: Record<string, string> = {};
+for (const [srcId, dag] of Object.entries(BROKEN_DAGS)) {
+  const targetDp = DATA_PRODUCTS.find(d => d.id === dag.target);
+  const srcDp = DATA_PRODUCTS.find(d => d.id === srcId);
+  if (targetDp && srcDp) {
+    const bizSnake = toSnake(targetDp.name);
+    const srcSnake = toSnake(srcDp.name);
+    const modelName = `stg_${bizSnake}__${srcSnake}`;
+    brokenDagEdgeReason[`${srcId}|${dag.target}`] = dag.errorFn(modelName);
+  }
+}
+
+for (const le of LINEAGE_EDGES) {
+  let edgeStatus = "HEALTHY";
+  let statusReason: string | null = null;
+
+  const dagEntry = BROKEN_DAGS[le.source];
+
+  if (dagEntry && dagEntry.target === le.target) {
+    edgeStatus = "BROKEN";
+    statusReason = brokenDagEdgeReason[`${le.source}|${le.target}`] || "DAG failure";
+    businessWithBrokenUpstream.add(le.target);
+  } else if (brokenSourceProducts.has(le.source) && le.target.startsWith("biz-")) {
+    edgeStatus = "WARNING";
+    const srcName = DATA_PRODUCTS.find(d => d.id === le.source)?.name || le.source;
+    statusReason = `Upstream source product "${srcName}" has broken ingestion connector — no fresh data landing in raw schema, downstream marts serving stale data`;
+    businessWithBrokenUpstream.add(le.target);
+  } else if (pausedSourceProducts.has(le.source) && le.target.startsWith("biz-")) {
+    edgeStatus = "WARNING";
+    const srcName = DATA_PRODUCTS.find(d => d.id === le.source)?.name || le.source;
+    statusReason = `Upstream source product "${srcName}" connector is PAUSED — data sync suspended, freshness degrading since pause date`;
+    businessWithBrokenUpstream.add(le.target);
+  }
+
+  insertEdge.run(`edge-${uid()}`, le.source, le.target, le.type, le.desc, edgeStatus, statusReason);
+  edgeCounts[edgeStatus as keyof typeof edgeCounts]++;
+}
+console.log(`  ${LINEAGE_EDGES.length} lineage edges (${edgeCounts.BROKEN} broken, ${edgeCounts.WARNING} warning, ${edgeCounts.HEALTHY} healthy)`);
 
 // Consumers
 const insertConsumer = db.prepare("INSERT INTO data_product_consumer (id, data_product_id, consumer_name, consumer_type, team, access_frequency) VALUES (?, ?, ?, ?, ?, ?)");
@@ -570,18 +661,27 @@ insertLogsBatch();
 console.log(`  ${logCount} sync log entries`);
 console.log(`  ${statsCount} daily stat records`);
 
-// Pipeline Health
+// Pipeline Health — deterministic for broken and paused connections
 const insertHealth = db.prepare("INSERT INTO pipeline_health (connection_id, measured_at, status, last_success_at, failure_streak, avg_latency_sec) VALUES (?, ?, ?, ?, ?, ?)");
 const now = dateOffset(0);
 let healthCount = 0;
+const brokenConnSet = new Set(brokenConnIndices);
+const pausedConnSet = new Set(pausedConnIndices);
 for (let i = 0; i < connIds.length; i++) {
-  const connStatus = pick(statuses);
   let healthStatus: string, failStreak: number;
-  if (connStatus === "BROKEN") { healthStatus = "DOWN"; failStreak = Math.floor(randBetween(3, 20)); }
-  else if (Math.random() < 0.15) { healthStatus = "DEGRADED"; failStreak = Math.floor(randBetween(1, 3)); }
-  else { healthStatus = "HEALTHY"; failStreak = 0; }
+  if (brokenConnSet.has(i)) {
+    healthStatus = "DOWN";
+    failStreak = Math.floor(randBetween(3, 8));
+  } else if (pausedConnSet.has(i)) {
+    healthStatus = "DEGRADED";
+    failStreak = 0;
+  } else {
+    healthStatus = "HEALTHY";
+    failStreak = 0;
+  }
   const latency = healthStatus === "HEALTHY" ? randBetween(5, 60) : healthStatus === "DEGRADED" ? randBetween(60, 300) : randBetween(300, 900);
-  insertHealth.run(connIds[i], now, healthStatus, healthStatus === "DOWN" ? dateOffset(Math.floor(randBetween(1, 7))) : dateOffset(0), failStreak, Math.round(latency * 100) / 100);
+  const lastSuccess = healthStatus === "DOWN" ? dateOffset(Math.floor(randBetween(1, 3))) : pausedConnSet.has(i) ? dateOffset(Math.floor(randBetween(8, 12))) : dateOffset(0);
+  insertHealth.run(connIds[i], now, healthStatus, lastSuccess, failStreak, Math.round(latency * 100) / 100);
   healthCount++;
 }
 console.log(`  ${healthCount} pipeline health records`);
@@ -604,6 +704,272 @@ const insertPolicy = db.prepare("INSERT INTO governance_policy (id, name, policy
 for (const p of POLICIES) insertPolicy.run(`pol-${uid()}`, p.name, p.policy_type, p.description, p.scope, p.domain_id, p.enforced ? 1 : 0);
 console.log(`  ${POLICIES.length} governance policies`);
 
+// ── ERROR sync_logs for broken connections ──
+console.log("  Adding broken-connection error logs...");
+for (const idx of brokenConnIndices) {
+  const app = APPS[idx];
+  const connId = connIds[idx];
+  const errMsg = BROKEN_APPS[app.name];
+  for (let h = 0; h < 6; h++) {
+    const hoursAgo = h * 2 + Math.floor(Math.random() * 2);
+    const ts = new Date(); ts.setHours(ts.getHours() - hoursAgo);
+    const startTime = ts.toISOString().slice(0, 19).replace("T", " ");
+    const endTs = new Date(ts); endTs.setSeconds(endTs.getSeconds() + Math.floor(randBetween(1, 8)));
+    const endTime = endTs.toISOString().slice(0, 19).replace("T", " ");
+    insertSyncLog.run(`log-err-${uid()}`, connId, `sync-fail-${uid()}`, "ERROR", errMsg, 0, 0, startTime, endTime, Math.round(randBetween(1, 8) * 100) / 100);
+  }
+}
+// ── PAUSED sync_logs for paused connections ──
+console.log("  Adding paused-connection info logs...");
+for (const idx of pausedConnIndices) {
+  const app = APPS[idx];
+  const connId = connIds[idx];
+  const reason = PAUSED_APPS[app.name];
+  const ts = new Date(); ts.setDate(ts.getDate() - Math.floor(randBetween(8, 12)));
+  const startTime = ts.toISOString().slice(0, 19).replace("T", " ");
+  insertSyncLog.run(`log-pause-${uid()}`, connId, `sync-pause-${uid()}`, "WARNING", `[PAUSED] ${reason}`, 0, 0, startTime, startTime, 0);
+}
+
+// ── Product Pipeline Runs ──
+// Model names are derived from actual LINEAGE_EDGES so they match everywhere:
+//   SOURCE:   connector_{src}, stg_{src}, stg_{src}_cleaned, marts.{src}_summary, marts.{src}_latest
+//   BUSINESS: stg_{biz}__{upstream_source_name} (per upstream), int_{biz}_joined, marts.{biz}_*
+//   CONSUMER: stg_{con}__{upstream_biz_name} (per upstream), marts.{con}_*
+console.log("  Generating product pipeline runs...");
+const insertPPR = db.prepare("INSERT INTO product_pipeline_run (id, data_product_id, run_id, stage, model_name, orchestrator, status, started_at, completed_at, duration_sec, rows_processed, log_message, error_message) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+let pprCount = 0;
+
+const BROKEN_DAG_BY_TARGET: Record<string, { source: string; errorFn: (m: string) => string }> = {};
+for (const [src, val] of Object.entries(BROKEN_DAGS)) {
+  BROKEN_DAG_BY_TARGET[val.target] = { source: src, errorFn: val.errorFn };
+}
+
+const srcProductConnError: Record<string, string> = {};
+const srcProductPauseReason: Record<string, string> = {};
+for (const dp of DATA_PRODUCTS) {
+  if (dp.product_type !== "SOURCE_ALIGNED") continue;
+  const appName = PRODUCT_TO_APP[dp.name] || dp.name;
+  if (BROKEN_APPS[appName]) srcProductConnError[dp.id] = BROKEN_APPS[appName];
+  if (PAUSED_APPS[appName]) srcProductPauseReason[dp.id] = PAUSED_APPS[appName];
+}
+
+const dpById = new Map(DATA_PRODUCTS.map(d => [d.id, d]));
+
+// Build a set of source product IDs that have broken or paused upstream connections
+const staleSourceIds = new Set([...Object.keys(srcProductConnError), ...Object.keys(srcProductPauseReason)]);
+
+for (const dp of DATA_PRODUCTS) {
+  const snake = toSnake(dp.name);
+  const runId = `run-${uid()}`;
+  const hasBrokenDag = dp.id in BROKEN_DAG_BY_TARGET;
+  const isBrokenSource = dp.id in srcProductConnError;
+  const isPausedSource = dp.id in srcProductPauseReason;
+  const baseOrch = pick(["airflow", "prefect", "dbt"] as const);
+  const baseTime = new Date(); baseTime.setMinutes(baseTime.getMinutes() - Math.floor(randBetween(10, 120)));
+
+  type ModelDef = { name: string; stage: string; orch: string; srcId?: string };
+  let models: ModelDef[];
+
+  if (dp.product_type === "SOURCE_ALIGNED") {
+    models = [
+      { name: `connector_${snake}`, stage: "CONNECTOR", orch: "custom" },
+      { name: `stg_${snake}`, stage: "STAGING", orch: "dbt" },
+      { name: `stg_${snake}_cleaned`, stage: "STAGING", orch: "dbt" },
+      { name: `marts.${snake}_summary`, stage: "MART", orch: baseOrch },
+      { name: `marts.${snake}_latest`, stage: "MART", orch: baseOrch },
+    ];
+  } else if (dp.product_type === "BUSINESS") {
+    // One staging model per SOURCE_ALIGNED upstream — no truncation
+    const upEdges = LINEAGE_EDGES.filter(e => e.target === dp.id && dpById.get(e.source)?.product_type === "SOURCE_ALIGNED");
+    const stgModels: ModelDef[] = upEdges.map(e => {
+      const src = dpById.get(e.source)!;
+      return { name: `stg_${snake}__${toSnake(src.name)}`, stage: "STAGING", orch: "dbt", srcId: e.source };
+    });
+    if (stgModels.length === 0) {
+      stgModels.push({ name: `stg_${snake}__fallback`, stage: "STAGING", orch: "dbt" });
+    }
+    models = [
+      ...stgModels,
+      { name: `int_${snake}_joined`, stage: "STAGING", orch: "dbt" },
+      { name: `marts.${snake}_summary`, stage: "MART", orch: baseOrch },
+      { name: `marts.${snake}_wide`, stage: "MART", orch: baseOrch },
+    ];
+  } else {
+    // One staging model per upstream (business or other) — no truncation
+    const upEdges = LINEAGE_EDGES.filter(e => e.target === dp.id);
+    const stgModels: ModelDef[] = upEdges.map(e => {
+      const src = dpById.get(e.source)!;
+      return { name: `stg_${snake}__${toSnake(src.name)}`, stage: "STAGING", orch: "dbt", srcId: e.source };
+    });
+    if (stgModels.length === 0) {
+      stgModels.push({ name: `stg_${snake}__fallback`, stage: "STAGING", orch: "dbt" });
+    }
+    models = [
+      ...stgModels,
+      { name: `marts.${snake}_summary`, stage: "MART", orch: baseOrch },
+      { name: `marts.${snake}_api_ready`, stage: "MART", orch: baseOrch },
+    ];
+  }
+
+  // Determine which model index fails for BROKEN_DAG products
+  let failIdx = -1;
+  let dagError: string | null = null;
+  if (hasBrokenDag) {
+    const dag = BROKEN_DAG_BY_TARGET[dp.id];
+    failIdx = models.findIndex(m => m.srcId === dag.source);
+    if (failIdx < 0) failIdx = models.findIndex(m => m.stage === "STAGING");
+    if (failIdx < 0) failIdx = 0;
+    dagError = dag.errorFn(models[failIdx].name);
+  }
+
+  // For biz/consumer products, figure out which staging models read from stale sources
+  // A staging model is stale if its srcId traces back to a broken or paused source product
+  const staleStagingModels = new Set<number>();
+  if (!isBrokenSource && !isPausedSource && !hasBrokenDag) {
+    for (let mi = 0; mi < models.length; mi++) {
+      const m = models[mi];
+      if (!m.srcId) continue;
+      // Direct stale: srcId is a broken/paused source product
+      if (staleSourceIds.has(m.srcId)) { staleStagingModels.add(mi); continue; }
+      // Indirect stale: srcId is a business product that itself has broken/paused upstream
+      if (businessWithBrokenUpstream.has(m.srcId)) { staleStagingModels.add(mi); }
+    }
+  }
+  const hasAnyStaleDep = staleStagingModels.size > 0;
+
+  let cumulativeSec = 0;
+  for (let mi = 0; mi < models.length; mi++) {
+    const m = models[mi];
+    let status: string;
+    let logMsg: string;
+    let errMsg: string | null = null;
+    let durSec: number;
+    let rows: number;
+
+    if (isBrokenSource) {
+      // SOURCE product with BROKEN connection: connector FAILED, rest SKIPPED
+      if (mi === 0) {
+        status = "FAILED";
+        durSec = randBetween(2, 12);
+        rows = 0;
+        errMsg = srcProductConnError[dp.id];
+        logMsg = `FAILED: ${errMsg}`;
+      } else {
+        status = "SKIPPED";
+        durSec = 0;
+        rows = 0;
+        logMsg = mi === 1
+          ? `Skipped — upstream connector ${models[0].name} FAILED. No fresh data landed in raw schema. dbt run deferred until connector recovers`
+          : `Skipped — dependency chain broken at ${models[0].name}. Model ${m.name} cannot execute without upstream materialization`;
+        if (m.stage === "MART") logMsg = `Skipped — mart build deferred. Upstream staging layer not refreshed due to connector failure in ${models[0].name}`;
+      }
+    } else if (isPausedSource) {
+      // SOURCE product with PAUSED connection: connector WARNING, staging/mart WARNING (stale)
+      if (mi === 0) {
+        status = "WARNING";
+        durSec = 0;
+        rows = 0;
+        logMsg = `WARNING — connector paused: ${srcProductPauseReason[dp.id]}`;
+      } else {
+        status = "WARNING";
+        durSec = randBetween(8, 120);
+        rows = Math.floor(randBetween(200, 80000));
+        if (m.stage === "STAGING") {
+          logMsg = `WARNING — built from cached raw data: ${rows.toLocaleString()} rows in ${durSec.toFixed(0)}s. Source connector paused, data may be stale`;
+        } else {
+          logMsg = `WARNING — mart built from stale staging data: ${rows.toLocaleString()} rows in ${durSec.toFixed(0)}s. Freshness SLA at risk`;
+        }
+      }
+    } else if (hasBrokenDag && failIdx >= 0) {
+      // BUSINESS product with independent DAG failure
+      if (mi === failIdx) {
+        status = "FAILED";
+        durSec = randBetween(30, 180);
+        rows = 0;
+        errMsg = dagError;
+        logMsg = `FAILED: ${dagError}`;
+      } else if (mi > failIdx) {
+        status = "SKIPPED";
+        durSec = 0;
+        rows = 0;
+        const failedModel = models[failIdx].name;
+        if (m.name.includes("_joined")) {
+          logMsg = `Skipped — cannot execute join. Required input ${failedModel} did not materialize. dbt deps check: FAILED`;
+        } else if (m.stage === "MART") {
+          logMsg = `Skipped — mart ${m.name} build deferred. Upstream transformation layer incomplete due to failure in ${failedModel}`;
+        } else {
+          logMsg = `Skipped — upstream model ${failedModel} FAILED. Dependency graph halted`;
+        }
+      } else {
+        status = "COMPLETED";
+        durSec = randBetween(4, 300);
+        rows = Math.floor(randBetween(500, 500000));
+        logMsg = `dbt run OK — model ${m.name}: ${rows.toLocaleString()} rows in ${durSec.toFixed(0)}s`;
+      }
+    } else if (hasAnyStaleDep) {
+      // Biz/consumer product with upstream stale sources but no direct DAG failure
+      const isStaleStg = staleStagingModels.has(mi);
+      if (isStaleStg) {
+        // This staging model reads from a stale/broken source
+        const srcDp = m.srcId ? dpById.get(m.srcId) : null;
+        const srcLabel = srcDp?.name || "upstream";
+        const isSrcBroken = m.srcId && srcProductConnError[m.srcId];
+        status = "WARNING";
+        durSec = randBetween(8, 120);
+        rows = Math.floor(randBetween(200, 80000));
+        logMsg = isSrcBroken
+          ? `WARNING — upstream source "${srcLabel}" connector is broken. Model ${m.name} built from stale data: ${rows.toLocaleString()} rows in ${durSec.toFixed(0)}s`
+          : `WARNING — upstream source "${srcLabel}" connector is paused. Model ${m.name} built from cached data: ${rows.toLocaleString()} rows in ${durSec.toFixed(0)}s`;
+      } else if (m.name.includes("_joined") || m.stage === "MART") {
+        // Join and mart models inherit WARNING because at least one input is stale
+        status = "WARNING";
+        durSec = randBetween(8, 180);
+        rows = Math.floor(randBetween(500, 500000));
+        logMsg = `WARNING — ${m.name}: ${rows.toLocaleString()} rows in ${durSec.toFixed(0)}s. At least one upstream staging model has stale data`;
+      } else {
+        // Other staging models with healthy upstream are COMPLETED
+        status = "COMPLETED";
+        durSec = randBetween(4, 300);
+        rows = Math.floor(randBetween(500, 500000));
+        const testsPassed = Math.floor(randBetween(4, 12));
+        logMsg = `dbt run OK — model ${m.name}: ${rows.toLocaleString()} rows materialized in ${durSec.toFixed(0)}s. ${testsPassed} tests passed, 0 warnings`;
+      }
+    } else {
+      // Fully healthy product: all COMPLETED
+      status = "COMPLETED";
+      durSec = randBetween(4, 300);
+      rows = Math.floor(randBetween(500, 500000));
+      if (m.stage === "CONNECTOR") {
+        logMsg = `Sync completed — extracted ${rows.toLocaleString()} rows (${(rows * randBetween(200, 800) / 1024 / 1024).toFixed(1)}MB) in ${durSec.toFixed(0)}s. Schema: ${dp.name.toLowerCase().replace(/\s+/g, "_")}_raw`;
+      } else if (m.stage === "STAGING") {
+        const testsPassed = Math.floor(randBetween(4, 12));
+        logMsg = `dbt run OK — model ${m.name}: ${rows.toLocaleString()} rows materialized in ${durSec.toFixed(0)}s. ${testsPassed} tests passed, 0 warnings`;
+      } else {
+        logMsg = `Mart refreshed — ${rows.toLocaleString()} rows in ${durSec.toFixed(0)}s. Freshness: OK (within SLA ${dp.sla_freshness})`;
+      }
+    }
+
+    const startTs = new Date(baseTime);
+    startTs.setSeconds(startTs.getSeconds() + cumulativeSec);
+    const endTs = new Date(startTs);
+    endTs.setSeconds(endTs.getSeconds() + durSec);
+    cumulativeSec += durSec + 2;
+
+    insertPPR.run(
+      `ppr-${uid()}`, dp.id, runId, m.stage as string, m.name, m.orch,
+      status,
+      startTs.toISOString().slice(0, 19).replace("T", " "),
+      status === "SKIPPED" ? null : endTs.toISOString().slice(0, 19).replace("T", " "),
+      Math.round(durSec * 100) / 100,
+      rows,
+      logMsg,
+      errMsg
+    );
+    pprCount++;
+  }
+}
+console.log(`  ${pprCount} product pipeline runs`);
+
 // SLA Breaches (realistic: ~15 in last 30 days)
 const insertBreach = db.prepare("INSERT INTO sla_breach (id, data_product_id, breach_type, expected_value, actual_value, detected_at, resolved_at, severity) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
 const breachProducts = DATA_PRODUCTS.filter(dp => dp.quality_score < 0.9);
@@ -620,5 +986,7 @@ for (let i = 0; i < 15; i++) {
 }
 console.log(`  15 SLA breaches`);
 
+db.pragma("wal_checkpoint(TRUNCATE)");
+db.pragma("journal_mode = DELETE");
 db.close();
 console.log("\nSeed complete.");

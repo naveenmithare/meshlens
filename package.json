@@ -4,15 +4,18 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "npm run db:prepare",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
     "db:migrate": "tsx scripts/migrate.ts",
     "db:seed": "tsx scripts/seed.ts",
-    "db:reset": "rm -f db/mesh_metadata.db && npm run db:migrate && npm run db:seed",
-    "setup": "npm run db:migrate && npm run db:seed"
+    "db:prepare": "rm -f db/mesh_metadata.db db/mesh_metadata.db-shm db/mesh_metadata.db-wal db/meshlens.db && npm run db:migrate && npm run db:seed",
+    "db:reset": "npm run db:prepare",
+    "setup": "npm run db:prepare"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "better-sqlite3": "^12.6.2",
     "next": "16.1.6",
     "react": "19.2.3",
