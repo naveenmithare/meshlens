@@ -1129,7 +1129,33 @@ export default function MeshAtlasClient({ graph, overview, domains, apps, produc
 
           <svg ref={svgRef} viewBox={`0 0 ${cfg.vw} ${cfg.vh}`} className="absolute inset-3 w-[calc(100%-24px)] h-[calc(100%-24px)]" preserveAspectRatio="xMidYMid meet">
             <defs>
-              <style>{`@keyframes flowAlong{to{stroke-dashoffset:-16}}.fl{stroke-dasharray:3 13;animation:flowAlong 2s linear infinite}.fl-fast{stroke-dasharray:2 10;animation:flowAlong 1s linear infinite}`}</style>
+              <style>{`
+@keyframes flowAlong{to{stroke-dashoffset:-16}}
+.fl{stroke-dasharray:3 13;animation:flowAlong 2s linear infinite}
+.fl-fast{stroke-dasharray:2 10;animation:flowAlong 1s linear infinite}
+@keyframes murmurDrift{
+  0%{transform:translate(0,0)}
+  25%{transform:translate(1.5px,-2px)}
+  50%{transform:translate(-1px,1.5px)}
+  75%{transform:translate(2px,1px)}
+  100%{transform:translate(0,0)}
+}
+@keyframes murmurGlow{
+  0%,100%{filter:drop-shadow(0 0 2px currentColor) drop-shadow(0 0 0px currentColor)}
+  50%{filter:drop-shadow(0 0 6px currentColor) drop-shadow(0 0 12px currentColor)}
+}
+@keyframes murmurPulse{
+  0%,100%{stroke-opacity:0.9;stroke-width:2.5px}
+  50%{stroke-opacity:0.4;stroke-width:1.5px}
+}
+@keyframes dimShrink{
+  from{opacity:1;transform:scale(1)}
+  to{opacity:0.08;transform:scale(0.92)}
+}
+.murmur-node{animation:murmurDrift 3s ease-in-out infinite,murmurGlow 2.5s ease-in-out infinite}
+.murmur-line{animation:murmurPulse 1.8s ease-in-out infinite}
+.dim-out{animation:dimShrink 0.5s ease-out forwards}
+`}</style>
               <marker id="arrowIn" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill={cfg.text} opacity="0.3" /></marker>
             </defs>
 
@@ -1168,7 +1194,7 @@ export default function MeshAtlasClient({ graph, overview, domains, apps, produc
             {clusters.map(cl => {
               const clDim = (sel && !linked.has(`dom-${cl.domain}`)) || (hovDom != null && hovDom !== cl.domain);
               const isHov = hovDom === cl.domain;
-              return (<g key={cl.domain} opacity={clDim ? 0.12 : 1} style={{ transition: "opacity 0.25s" }}>
+              return (<g key={cl.domain} className={clDim && sel ? "dim-out" : ""} opacity={clDim && !sel ? 0.12 : 1} style={{ transition: "opacity 0.4s ease-out" }}>
                 <circle cx={cl.cx} cy={cl.cy} r={cl.radius} fill={cl.color} fillOpacity={isHov ? cfg.domainBubbleOpacity + 0.08 : cfg.domainBubbleOpacity} stroke={cl.color} strokeWidth={isHov ? 2 : 1.2} strokeOpacity={isHov ? 0.5 : 0.25} />
                 {cl.groups.map(g => {
                   return (<g key={g.type}>
@@ -1193,16 +1219,40 @@ export default function MeshAtlasClient({ graph, overview, domains, apps, produc
             })}
 
             {/* Product bubbles with nested upstream dots */}
-            {pNodes.map(n => { const isSel = sel?.kind === "product" && sel.id === n.id; const dim = isDim(n.id, n.label, n.domainName); const p = products.find((pp: any) => pp.id === n.id); const isSource = n.productType === "SOURCE_ALIGNED"; const linkedApp = isSource ? appProductLinks.find(l => l.product_id === n.id) : null; const hasInner = isSource ? !!linkedApp : (n.upstreamIds || []).length > 0; return (<g key={n.id} style={{ cursor: "pointer" }} onClick={e => { e.stopPropagation(); setSel(isSel ? null : { kind: "product", id: n.id }); }} onMouseEnter={e => p && showTip(e, productTip(p))} onMouseLeave={hideTip}>
-              {isSel && <circle cx={n.x} cy={n.y} r={n.r + 5} fill="none" stroke={cfg.layerColors.APPS} strokeWidth={1.5}><animate attributeName="opacity" values="0.8;0.2;0.8" dur="2s" repeatCount="indefinite" /></circle>}
-              <circle cx={n.x} cy={n.y} r={n.r} fill={dim ? "#d1d5db" : cfg.layerColors[n.productType] || "#999"} fillOpacity={hasInner ? (cfg.outerBubbleOpacity[n.productType] ?? 0.15) : 1} stroke={isSel ? cfg.layerColors.APPS : hasInner ? cfg.layerColors[n.productType] : cfg.bg} strokeWidth={isSel ? 2 : hasInner ? 1 : 0.8} strokeOpacity={hasInner ? 0.5 : 1} opacity={dim ? 0.2 : 1} style={{ transition: "all 0.2s" }} />
-              {hasInner && !dim && (() => {
-                if (isSource) {
-                  return <circle cx={n.x} cy={n.y} r={cfg.innerDotR} fill={cfg.layerColors.APPS} opacity={0.85} stroke="white" strokeWidth={0.5} />;
-                }
-                const upLayer = n.productType === "BUSINESS" ? "SOURCE_ALIGNED" : "BUSINESS"; const dotR = cfg.innerDotR; const ups = n.upstreamIds || []; const dots = dotsInGroup(n.x, n.y, ups.length, n.r, dotR); return ups.map((uid, i) => <circle key={uid} cx={dots[i]?.[0] ?? n.x} cy={dots[i]?.[1] ?? n.y} r={dotR} fill={cfg.layerColors[upLayer]} opacity={0.75} stroke="white" strokeWidth={0.5} />);
-              })()}
-            </g>); })}
+            {pNodes.map(n => {
+              const isSel = sel?.kind === "product" && sel.id === n.id;
+              const isLinked = sel != null && linked.has(n.id);
+              const dim = isDim(n.id, n.label, n.domainName);
+              const p = products.find((pp: any) => pp.id === n.id);
+              const isSource = n.productType === "SOURCE_ALIGNED";
+              const linkedApp = isSource ? appProductLinks.find(l => l.product_id === n.id) : null;
+              const hasInner = isSource ? !!linkedApp : (n.upstreamIds || []).length > 0;
+              const murmur = sel != null && isLinked && !isSel;
+              const layerCol = cfg.layerColors[n.productType] || "#999";
+              return (
+                <g key={n.id}
+                  className={murmur ? "murmur-node" : dim && sel ? "dim-out" : ""}
+                  style={{ cursor: "pointer", transformOrigin: `${n.x}px ${n.y}px`, color: layerCol, animationDelay: murmur ? `${(n.x * 7 + n.y * 3) % 2000}ms` : undefined }}
+                  onClick={e => { e.stopPropagation(); setSel(isSel ? null : { kind: "product", id: n.id }); }}
+                  onMouseEnter={e => p && showTip(e, productTip(p))} onMouseLeave={hideTip}>
+                  {isSel && <circle cx={n.x} cy={n.y} r={n.r + 5} fill="none" stroke={cfg.layerColors.APPS} strokeWidth={1.5}><animate attributeName="opacity" values="0.8;0.2;0.8" dur="2s" repeatCount="indefinite" /></circle>}
+                  <circle cx={n.x} cy={n.y} r={n.r}
+                    fill={dim ? "#d1d5db" : layerCol}
+                    fillOpacity={hasInner ? (cfg.outerBubbleOpacity[n.productType] ?? 0.15) : 1}
+                    stroke={isSel ? cfg.layerColors.APPS : hasInner ? layerCol : cfg.bg}
+                    strokeWidth={isSel ? 2 : hasInner ? 1 : 0.8}
+                    strokeOpacity={hasInner ? 0.5 : 1}
+                    opacity={dim && !sel ? 0.2 : 1}
+                    style={!murmur && !(dim && sel) ? { transition: "all 0.4s ease-out" } : undefined} />
+                  {hasInner && !dim && (() => {
+                    if (isSource) {
+                      return <circle cx={n.x} cy={n.y} r={cfg.innerDotR} fill={cfg.layerColors.APPS} opacity={0.85} stroke="white" strokeWidth={0.5} />;
+                    }
+                    const upLayer = n.productType === "BUSINESS" ? "SOURCE_ALIGNED" : "BUSINESS"; const dotR = cfg.innerDotR; const ups = n.upstreamIds || []; const dots = dotsInGroup(n.x, n.y, ups.length, n.r, dotR); return ups.map((uid, i) => <circle key={uid} cx={dots[i]?.[0] ?? n.x} cy={dots[i]?.[1] ?? n.y} r={dotR} fill={cfg.layerColors[upLayer]} opacity={0.75} stroke="white" strokeWidth={0.5} />);
+                  })()}
+                </g>
+              );
+            })}
 
             {/* Flow lines — rendered after bubbles so they're always visible */}
             {appSourceEdges.map(e => {
@@ -1210,9 +1260,10 @@ export default function MeshAtlasClient({ graph, overview, domains, apps, produc
               const dim = sel && !hi;
               const op = dim ? 0.02 : hi ? 0.7 : cfg.flow.opacity;
               const w = hi ? cfg.flow.highlightWidth : cfg.flow.width;
-              return (<g key={e.id}>
-                <path d={e.d} fill="none" stroke={e.healthy ? cfg.green : cfg.red} strokeWidth={w} opacity={op} strokeLinecap="round" />
-                {cfg.show.flowAnimation && hi && <path d={e.d} fill="none" stroke={e.healthy ? cfg.green : cfg.red} strokeWidth={w + 0.5} opacity={0.9} className="fl-fast" />}
+              const col = e.healthy ? cfg.green : cfg.red;
+              return (<g key={e.id} style={dim ? { transition: "opacity 0.5s ease-out" } : undefined}>
+                <path d={e.d} fill="none" stroke={col} strokeWidth={w} opacity={op} strokeLinecap="round" />
+                {hi && <path d={e.d} fill="none" stroke={col} strokeWidth={w + 0.5} opacity={0.9} className={cfg.show.flowAnimation ? "fl-fast" : "murmur-line"} />}
               </g>);
             })}
 
@@ -1221,9 +1272,10 @@ export default function MeshAtlasClient({ graph, overview, domains, apps, produc
               const dim = sel && !hi;
               const op = dim ? 0.02 : hi ? 0.7 : cfg.flow.opacity;
               const w = hi ? cfg.flow.highlightWidth : cfg.flow.width;
-              return (<g key={e.id}>
-                <path d={e.d} fill="none" stroke={e.healthy ? cfg.green : cfg.red} strokeWidth={w} opacity={op} strokeLinecap="round" />
-                {cfg.show.flowAnimation && hi && <path d={e.d} fill="none" stroke={e.healthy ? cfg.green : cfg.red} strokeWidth={w + 0.5} opacity={0.9} className="fl-fast" />}
+              const col = e.healthy ? cfg.green : cfg.red;
+              return (<g key={e.id} style={dim ? { transition: "opacity 0.5s ease-out" } : undefined}>
+                <path d={e.d} fill="none" stroke={col} strokeWidth={w} opacity={op} strokeLinecap="round" />
+                {hi && <path d={e.d} fill="none" stroke={col} strokeWidth={w + 0.5} opacity={0.9} className={cfg.show.flowAnimation ? "fl-fast" : "murmur-line"} />}
               </g>);
             })}
 
@@ -1233,8 +1285,9 @@ export default function MeshAtlasClient({ graph, overview, domains, apps, produc
               if (!item.visible) return null;
               const pl = cfg.prodLabel;
               const isDragging = draggingLabelId === item.n.id;
+              const isLinkedLabel = sel != null && linked.has(item.n.id);
               return (
-                <g key={`plbl-${item.n.id}`} opacity={dim ? 0.05 : 1} style={{ transition: isDragging ? "none" : "opacity 0.2s", cursor: isDragging ? "grabbing" : "grab" }} onMouseDown={e => onLabelDragStart(e, item.n.id, item.lx, item.ly)}>
+                <g key={`plbl-${item.n.id}`} className={dim && sel && !isLinkedLabel ? "dim-out" : ""} opacity={dim && !sel ? 0.05 : 1} style={{ transition: isDragging ? "none" : "opacity 0.4s ease-out", cursor: isDragging ? "grabbing" : "grab" }} onMouseDown={e => onLabelDragStart(e, item.n.id, item.lx, item.ly)}>
                   {item.stagger && <line x1={item.n.x + item.n.r * Math.cos(Math.atan2(item.n.y - cfg.cy, item.n.x - cfg.cx))} y1={item.n.y + item.n.r * Math.sin(Math.atan2(item.n.y - cfg.cy, item.n.x - cfg.cx))} x2={item.lx} y2={item.ly} stroke={cfg.text} strokeWidth={0.3} opacity={0.15} strokeDasharray="1 1" />}
                   <text x={item.lx} y={item.ly} textAnchor={item.anchor} dominantBaseline="central" fill={isDragging ? cfg.layerColors.APPS : cfg.text} fontSize={item.fontSize} fontWeight={isDragging ? 600 : 400} opacity={pl.opacity} transform={item.rot !== 0 ? `rotate(${item.rot}, ${item.lx}, ${item.ly})` : undefined}>{item.label}</text>
                 </g>
