@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef, useEffect, useCallback, type ReactNode } from "react";
+import { useState, useMemo, useRef, useEffect, useLayoutEffect, useCallback, type ReactNode } from "react";
 import type { PlaygroundConfig } from "./playground/types";
 import { APP_CATEGORIES, DEFAULTS } from "./playground/types";
 import { usePlayground, type ColorTheme, loadSavedThemes, saveThemesToStorage, CLASSIC_THEME, applyThemeColors, extractColorsFromCfg, extractRightPanelSyncSnapshot, rightPanelSyncPathsForTarget, buildRightPanelSyncUpdates, LS_KEY_ARC, LS_KEY_GLOBAL_BG, LS_KEY_ACTIVE_THEME } from "./playground/usePlayground";
@@ -362,11 +362,12 @@ export default function MeshAtlasClient({ graph, overview, domains, apps, produc
   const resetCfg = resetArcCfg;
   const undoCfg = undoArcCfg;
 
-  useEffect(() => {
-    if (!IS_AUTHORING) return;
+  useLayoutEffect(() => {
     document.body.style.background = cfg.bg;
     document.documentElement.style.setProperty("--nav-bg", cfg.bg);
-    try { localStorage.setItem(LS_KEY_GLOBAL_BG, cfg.bg); } catch {}
+    if (IS_AUTHORING) {
+      try { localStorage.setItem(LS_KEY_GLOBAL_BG, cfg.bg); } catch {}
+    }
   }, [cfg.bg]);
 
   const DESIGN_WIDTH = 1728;
@@ -375,7 +376,7 @@ export default function MeshAtlasClient({ graph, overview, domains, apps, produc
   const VIEWPORT_MARGIN = 4;
   const MAX_EFFECTIVE_STAGE_SCALE = 1.5;
   const [viewportSize, setViewportSize] = useState({ w: DESIGN_WIDTH, h: DESIGN_HEIGHT + NAV_HEIGHT });
-  useEffect(() => {
+  useLayoutEffect(() => {
     const calc = () => {
       const vv = window.visualViewport;
       setViewportSize({
