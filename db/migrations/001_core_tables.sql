@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS domain (
 CREATE TABLE IF NOT EXISTS application (
   id            TEXT PRIMARY KEY,
   name          TEXT NOT NULL,
-  app_type      TEXT NOT NULL CHECK (app_type IN ('CRM','ERP','STREAMING','API','DATABASE','SaaS','DEVTOOLS','HRIS','ANALYTICS','MARKETPLACE')),
+  app_type      TEXT NOT NULL CHECK (app_type IN ('SaaS','Database','API','Streaming')),
   domain_id     TEXT NOT NULL REFERENCES domain(id),
   description   TEXT,
   vendor        TEXT,

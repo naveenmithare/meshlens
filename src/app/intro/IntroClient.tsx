@@ -404,16 +404,12 @@ export default function IntroClient({ overview, domains, apps, products, policie
           </div>
           <div className="ml-auto flex gap-8">
             <div className="text-center">
-              <div className="text-2xl font-bold text-white">7</div>
+              <div className="text-2xl font-bold text-white">{overview.domain_count}</div>
               <div className="text-[10px] text-white/70 uppercase tracking-wider font-semibold">Domains</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-white">55</div>
+              <div className="text-2xl font-bold text-white">{overview.app_count}</div>
               <div className="text-[10px] text-white/70 uppercase tracking-wider font-semibold">Applications</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-white">89</div>
-              <div className="text-[10px] text-white/70 uppercase tracking-wider font-semibold">Data Products</div>
             </div>
           </div>
         </div>
@@ -505,7 +501,7 @@ export default function IntroClient({ overview, domains, apps, products, policie
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
             <path d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5" />
           </svg>
-          Click any domain below to explore its application landscape. Use the tabs in the catalogue to dive deeper.
+          Click any domain below to explore its application landscape and the systems that power it.
         </p>
 
         {/* Domain selector + detail — single card */}
@@ -676,27 +672,17 @@ export default function IntroClient({ overview, domains, apps, products, policie
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-16">
           {[
             {
               href: "/meshatlas", label: "MeshAtlas", title: "The Living Mesh", bg: "#a8d4f5",
               icon: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z",
-              desc: "Navigate the entire data mesh as an interactive, living map. See how domains connect, which pipelines are healthy, where data flows — and why this architecture matters. A scrollytelling experience that turns complexity into clarity.",
-            },
-            {
-              href: "/catalogue", label: "Product Catalogue", title: "Every Data Product, One Place", bg: "#dbb8e6",
-              icon: "M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-1 9H9V9h10v2zm-4 4H9v-2h6v2zm4-8H9V5h10v2z",
-              desc: "A filterable, searchable registry of every data product in the mesh. Browse by domain, type, or quality tier. Understand ownership, freshness SLAs, and how each product fits into the broader data supply chain.",
+              desc: "Navigate the entire data mesh as an interactive, living map. See how domains connect, which pipelines are healthy, where data flows — and why this architecture matters. An interactive experience that turns complexity into clarity.",
             },
             {
               href: "/semantic", label: "Semantic Layer", title: "The Blueprint", bg: "#b8e6c8",
               icon: "M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11zm-3-7H9v-2h6v2zm0 4H9v-2h6v2z",
               desc: "A reference schema design showing how to structure a mesh from ERD to materialized views. Use it as a starting point — adapt the data models, naming conventions, and layer boundaries to fit your own enterprise.",
-            },
-            {
-              href: "/stories", label: "Data Stories", title: "Voices from the Mesh", bg: "#ffe49a",
-              icon: "M21 6h-2v9H6v2c0 .55.45 1 1 1h11l4 4V7c0-.55-.45-1-1-1zm-4 6V3c0-.55-.45-1-1-1H3c-.55 0-1 .45-1 1v14l4-4h10c.55 0 1-.45 1-1z",
-              desc: "The space where teams share how they use the mesh — a finance team automating their close, an ML engineer building churn features, a product manager building self-serve dashboards. Real stories that help the whole organization learn.",
             },
           ].map((v) => (
             <Link key={v.href} href={v.href}

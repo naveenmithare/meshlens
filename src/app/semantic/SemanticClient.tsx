@@ -7,14 +7,10 @@ type CatalogTab = "columns" | "sources" | "logic" | "lineage";
 export default function SemanticClient() {
   const [selectedView, setSelectedView] = useState<string | null>(null);
   const [catalogTab, setCatalogTab] = useState<CatalogTab>("columns");
-  const [catalogFilter, setCatalogFilter] = useState<string | null>(null);
-
   const views = VIEWS_DATA;
   const activeView = views.find((v) => v.name === selectedView) ?? null;
   const totalCols = views.reduce((sum, v) => sum + v.columns.length, 0);
   const uniqueSources = new Set(views.flatMap((v) => v.sources)).size;
-  const dashboardGroups = Array.from(new Set(views.map((v) => v.dashboard)));
-  const filteredViews = catalogFilter ? views.filter((v) => v.dashboard === catalogFilter) : views;
 
   return (
     <div className="pt-28 min-h-screen">
@@ -66,42 +62,58 @@ export default function SemanticClient() {
 
       {/* Schema Groups */}
       <section className="max-w-[1200px] mx-auto px-8 pb-16">
-        <h2 className="text-xl font-semibold text-mesh-text mb-8">Schema Design</h2>
-        <div className="grid grid-cols-3 gap-6">
+        <h2 className="text-xl font-semibold text-mesh-text mb-2">Schema Design</h2>
+        <p className="text-base text-mesh-text-muted leading-relaxed mb-8">
+          Three logical groups organize the schema — core platform entities, the data mesh product layer, and operational health with governance controls.
+        </p>
+        <div className="grid grid-cols-2 gap-6">
           {SCHEMA_GROUPS.map((group) => (
-            <div key={group.title} className="bg-white rounded-xl border border-mesh-border p-6">
-              <h3 className="text-base font-bold mb-1.5" style={{ color: group.color }}>{group.title}</h3>
-              <p className="text-xs text-mesh-text-muted leading-relaxed mb-5">{group.desc}</p>
-              <div className="space-y-4">
+            <div key={group.title} className="rounded-2xl overflow-hidden border border-gray-200 bg-white shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
+              <div className="px-5 pt-5 pb-4 border-b border-gray-100" style={{ background: `${group.color}08` }}>
+                <div className="flex items-center gap-2.5 mb-2">
+                  <div className="w-2.5 h-8 rounded-full" style={{ background: group.color }} />
+                  <h3 className="text-[15px] font-bold text-mesh-text">{group.title}</h3>
+                  <span className="ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ color: group.color, background: `${group.color}15` }}>{group.tables.length} tables</span>
+                </div>
+                <p className="text-[12px] text-mesh-text-muted leading-[1.6] pl-[22px]">{group.desc}</p>
+              </div>
+              <div className="p-4 space-y-3">
                 {group.tables.map((t) => (
-                  <div
-                    key={t.name}
-                    className="w-full text-left bg-mesh-bg-light border border-mesh-border rounded-lg px-4 py-3"
-                  >
-                    <div className="text-sm font-bold text-mesh-text font-mono mb-1">{t.name}</div>
-                    <div className="flex flex-wrap gap-1 mb-2">
-                      {t.cols.map((c) => {
-                        const isPK = c.includes("PK");
-                        const isFK = c.includes("FK");
-                        const isCK = c.includes("CHECK");
-                        return (
-                          <span key={c} className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${
-                            isPK ? "bg-mesh-accent/10 text-mesh-text font-semibold"
-                            : isFK ? "text-mesh-accent bg-mesh-accent/5"
-                            : isCK ? "text-amber-400/70 bg-amber-400/5"
-                            : "text-mesh-text-muted bg-mesh-bg-light"
-                          }`}>
-                            {c.replace(" PK", " ⚷").replace(" FK", " →").replace(" CHECK", " ✓")}
-                          </span>
-                        );
-                      })}
+                  <div key={t.name} className="rounded-xl border border-gray-100 overflow-hidden hover:border-gray-200 transition-colors">
+                    <div className="flex items-center gap-2 px-3.5 py-2 bg-gray-50">
+                      <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 shrink-0" fill={group.color} opacity={0.6}><path d="M12 3C7.58 3 4 4.79 4 7v10c0 2.21 3.58 4 8 4s8-1.79 8-4V7c0-2.21-3.58-4-8-4zm0 2c3.87 0 6 1.5 6 2s-2.13 2-6 2-6-1.5-6-2 2.13-2 6-2z" /></svg>
+                      <span className="text-[12px] font-bold font-mono text-mesh-text">{t.name}</span>
                     </div>
-                    <div className="text-[11px] text-mesh-text-muted leading-snug">{t.purpose}</div>
+                    <div className="px-3.5 py-2.5">
+                      <div className="flex flex-wrap gap-1 mb-2">
+                        {t.cols.map((col) => {
+                          const isPK = col.includes("PK");
+                          const isFK = col.includes("FK");
+                          const isCK = col.includes("CHECK");
+                          return (
+                            <span key={col} className={`text-[9px] font-mono px-1.5 py-0.5 rounded-md border ${
+                              isPK ? "bg-amber-50 border-amber-200 text-amber-700 font-semibold"
+                              : isFK ? "bg-blue-50 border-blue-200 text-blue-600"
+                              : isCK ? "bg-orange-50 border-orange-200 text-orange-500"
+                              : "bg-gray-50 border-gray-150 text-gray-600"
+                            }`}>
+                              {isPK ? "⚷ " : isFK ? "→ " : isCK ? "✓ " : ""}{col.replace(" PK", "").replace(" FK", "").replace(" CHECK", "")}
+                            </span>
+                          );
+                        })}
+                      </div>
+                      <p className="text-[10px] text-mesh-text-muted leading-[1.6]">{t.purpose}</p>
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
           ))}
+        </div>
+        <div className="flex items-center gap-4 mt-5 px-2 text-[10px] text-mesh-text-muted">
+          <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded-md bg-amber-50 border border-amber-200 text-center text-[7px] font-bold text-amber-700 leading-[12px]">⚷</span> Primary Key</span>
+          <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded-md bg-blue-50 border border-blue-200 text-center text-[7px] font-bold text-blue-600 leading-[12px]">→</span> Foreign Key</span>
+          <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded-md bg-orange-50 border border-orange-200 text-center text-[7px] font-bold text-orange-500 leading-[12px]">✓</span> Check Constraint</span>
         </div>
       </section>
 
@@ -125,36 +137,9 @@ export default function SemanticClient() {
           upstream lineage, and query logic.
         </p>
 
-        {/* Dashboard filter chips */}
-        <div className="flex items-center gap-2 mb-6">
-          <button
-            onClick={() => setCatalogFilter(null)}
-            className={`text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-colors ${
-              catalogFilter === null
-                ? "bg-mesh-accent/10 border-mesh-accent/20 text-mesh-accent"
-                : "bg-transparent border-mesh-border text-mesh-text-muted hover:border-mesh-border"
-            }`}
-          >All ({views.length})</button>
-          {dashboardGroups.map((d) => {
-            const count = views.filter((v) => v.dashboard === d).length;
-            const isActive = catalogFilter === d;
-            return (
-              <button
-                key={d}
-                onClick={() => setCatalogFilter(isActive ? null : d)}
-                className={`text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-colors ${
-                  isActive
-                    ? "bg-mesh-accent/10 border-mesh-accent/20 text-mesh-accent"
-                    : "bg-transparent border-mesh-border text-mesh-text-muted hover:border-mesh-border"
-                }`}
-              >{d === "All Dashboards" ? "Global" : d} ({count})</button>
-            );
-          })}
-        </div>
-
         {/* View cards grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          {filteredViews.map((view) => {
+          {views.map((view) => {
             const isActive = selectedView === view.name;
             return (
               <button
@@ -172,12 +157,6 @@ export default function SemanticClient() {
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <span className={`text-[11px] font-bold font-mono leading-tight ${isActive ? "text-mesh-accent" : "text-mesh-text"}`}>
                       {view.name}
-                    </span>
-                    <span
-                      className="text-[8px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded shrink-0 mt-0.5"
-                      style={{ color: view.color, backgroundColor: `${view.color}12` }}
-                    >
-                      {view.dashboard === "All Dashboards" ? "Global" : view.dashboard}
                     </span>
                   </div>
                   <p className="text-[10px] text-mesh-text-muted leading-snug line-clamp-2 mb-3 min-h-[28px]">{view.desc}</p>
@@ -207,10 +186,7 @@ export default function SemanticClient() {
                   <div className="w-1.5 h-8 rounded-full" style={{ backgroundColor: activeView.color }} />
                   <h3 className="text-lg font-bold text-mesh-accent font-mono">{activeView.name}</h3>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded" style={{ color: activeView.color, backgroundColor: `${activeView.color}10` }}>{activeView.dashboard}</span>
-                  <span className="text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded bg-mesh-bg-light text-mesh-text-muted">Materialized View</span>
-                </div>
+                <span className="text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded bg-mesh-bg-light text-mesh-text-muted">Materialized View</span>
               </div>
               <p className="text-sm text-mesh-text-muted mb-4">{activeView.desc}</p>
               <div className="flex items-center gap-8">
@@ -340,9 +316,9 @@ export default function SemanticClient() {
                           <svg viewBox="0 0 24 24" className="w-4 h-4 shrink-0" fill={activeView.color} opacity={0.7}>
                             <path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z" />
                           </svg>
-                          <span className="text-xs font-bold" style={{ color: activeView.color }}>{activeView.dashboard}</span>
+                          <span className="text-xs font-bold" style={{ color: activeView.color }}>MeshLens</span>
                         </div>
-                        <div className="text-[10px] text-mesh-text-muted pl-6">Dashboard</div>
+                        <div className="text-[10px] text-mesh-text-muted pl-6">Visualization Layer</div>
                       </div>
                     </div>
                   </div>
@@ -388,7 +364,7 @@ export default function SemanticClient() {
             <div className="space-y-2.5">
               {[
                 { label: "Metadata Catalogs", tools: "Atlan · DataHub · Collibra · OpenMetadata" },
-                { label: "Sync & Ingestion", tools: "Airbyte · Stitch · Snowpipe · Custom ETL" },
+                { label: "Sync & Ingestion", tools: "SaaS ELT Tools · Cloud Warehouse · Custom ETL" },
                 { label: "Orchestration", tools: "Airflow · dbt · Dagster · Prefect" },
                 { label: "Governance", tools: "Privacera · Immuta · Apache Ranger" },
               ].map((row) => (
@@ -411,7 +387,7 @@ export default function SemanticClient() {
 
 const SCHEMA_GROUPS = [
   {
-    title: "Core Entities", color: "#a78bfa",
+    title: "Core Platform", color: "#a78bfa",
     desc: "The organizational backbone — domains own applications, applications connect to destinations through managed connections.",
     tables: [
       { name: "domain", cols: ["id PK", "name", "description", "owner_team", "color_hex", "created_at"], purpose: "Business domains — the fundamental ownership and organizational unit" },
@@ -421,7 +397,7 @@ const SCHEMA_GROUPS = [
     ],
   },
   {
-    title: "Data Products & Lineage", color: "#22c55e",
+    title: "Data Mesh Layer", color: "#22c55e",
     desc: "The product layer — every data product has a type, tier, quality score, SLA, and directional lineage edges.",
     tables: [
       { name: "data_product", cols: ["id PK", "name", "domain_id FK", "product_type CHECK", "tier CHECK", "quality_score CHECK", "sla_freshness", "owner", "description"], purpose: "The mesh quantum — typed, tiered, quality-scored, and SLA-bound" },
@@ -431,14 +407,20 @@ const SCHEMA_GROUPS = [
     ],
   },
   {
-    title: "Operational & Governance", color: "#00d8ff",
-    desc: "Time-series health data and governance policies — separated from core entities so operational telemetry can scale independently.",
+    title: "Pipeline Operations", color: "#00d8ff",
+    desc: "Time-series health data and sync telemetry — separated from core entities so operational data can scale independently.",
     tables: [
-      { name: "sync_log", cols: ["id PK", "connection_id FK", "event_type CHECK", "rows_synced", "bytes_synced", "duration_sec", "started_at", "completed_at"], purpose: "Event-level sync audit trail with timing and volume" },
+      { name: "sync_log", cols: ["id PK", "connection_id FK", "sync_id", "event_type CHECK", "message", "rows_synced", "bytes_synced", "started_at", "completed_at", "duration_sec"], purpose: "Event-level sync audit trail with timing and volume" },
       { name: "sync_daily_stats", cols: ["connection_id FK", "measured_date", "syncs_completed", "rows_synced", "errors_count", "avg_duration_sec"], purpose: "Pre-aggregated daily metrics — avoids expensive log scans" },
       { name: "pipeline_health", cols: ["connection_id FK", "measured_at", "status CHECK", "last_success_at", "failure_streak", "avg_latency_sec"], purpose: "Latest health snapshot — healthy, degraded, or down" },
-      { name: "schema_change", cols: ["id PK", "connection_id FK", "change_type CHECK", "table_name", "column_name", "detected_at"], purpose: "Column adds, drops, and renames — drift alerting" },
-      { name: "governance_policy", cols: ["id PK", "name", "policy_type CHECK", "domain_id FK", "scope CHECK", "enforced"], purpose: "RBAC, PII, retention, quality rules — domain-scoped or global" },
+      { name: "schema_change", cols: ["id PK", "connection_id FK", "change_type CHECK", "schema_name", "table_name", "column_name", "detected_at"], purpose: "Column adds, drops, and renames — drift alerting" },
+    ],
+  },
+  {
+    title: "Governance & Quality", color: "#f472b6",
+    desc: "Governance policies and SLA breach tracking — enforcing security, quality, and compliance standards across the mesh.",
+    tables: [
+      { name: "governance_policy", cols: ["id PK", "name", "policy_type CHECK", "description", "scope CHECK", "domain_id FK", "enforced"], purpose: "RBAC, PII, retention, quality rules — domain-scoped or global" },
       { name: "sla_breach", cols: ["id PK", "data_product_id FK", "breach_type CHECK", "severity CHECK", "expected_value", "actual_value", "detected_at", "resolved_at"], purpose: "Freshness and quality SLA breaches with resolution tracking" },
     ],
   },
@@ -450,7 +432,7 @@ const SCHEMA_GROUPS = [
 
 const VIEWS_DATA = [
   {
-    name: "v_mesh_overview", dashboard: "All Dashboards", color: "#00d8ff",
+    name: "v_mesh_overview", color: "#00d8ff",
     desc: "Single-row mesh summary providing a global health snapshot",
     columns: ["domain_count", "app_count", "product_count", "source_products", "business_products", "consumer_products", "connection_count", "active_connections", "broken_connections", "lineage_edges", "total_consumers", "overall_health_pct", "total_monthly_cost_usd", "open_sla_breaches"],
     sources: ["domain", "application", "data_product", "connection", "lineage_edge", "data_product_consumer", "pipeline_health", "sla_breach"],
@@ -477,10 +459,10 @@ const VIEWS_DATA = [
       { table: "pipeline_health", role: "Latest status per connection for health %", usedColumns: ["connection_id", "status", "measured_at"] },
       { table: "sla_breach", role: "Open breaches where resolved_at IS NULL", usedColumns: ["resolved_at"] },
     ],
-    logic: "SELECT\n  (SELECT COUNT(*) FROM domain) AS domain_count,\n  (SELECT COUNT(*) FROM data_product) AS product_count,\n  (SELECT COUNT(*) FROM data_product\n   WHERE product_type = 'SOURCE_ALIGNED') AS source_products,\n  ...\n  (SELECT ROUND(AVG(CASE WHEN ph.status = 'HEALTHY'\n    THEN 1.0 ELSE 0.0 END) * 100, 1)\n   FROM pipeline_health ph\n   WHERE ph.measured_at = (\n     SELECT MAX(measured_at) FROM pipeline_health ph2\n     WHERE ph2.connection_id = ph.connection_id\n   )) AS overall_health_pct;",
+    logic: "SELECT\n  (SELECT COUNT(*) FROM domain) AS domain_count,\n  (SELECT COUNT(*) FROM application) AS app_count,\n  (SELECT COUNT(*) FROM data_product) AS product_count,\n  (SELECT COUNT(*) FROM data_product WHERE product_type = 'SOURCE_ALIGNED') AS source_products,\n  (SELECT COUNT(*) FROM data_product WHERE product_type = 'BUSINESS') AS business_products,\n  (SELECT COUNT(*) FROM data_product WHERE product_type = 'CONSUMER_ALIGNED') AS consumer_products,\n  (SELECT COUNT(*) FROM connection) AS connection_count,\n  (SELECT COUNT(*) FROM connection WHERE status = 'ACTIVE') AS active_connections,\n  (SELECT COUNT(*) FROM connection WHERE status = 'BROKEN') AS broken_connections,\n  (SELECT COUNT(*) FROM lineage_edge) AS lineage_edges,\n  (SELECT COUNT(*) FROM data_product_consumer) AS total_consumers,\n  (SELECT ROUND(AVG(CASE WHEN ph.status = 'HEALTHY' THEN 1.0 ELSE 0.0 END) * 100, 1)\n   FROM pipeline_health ph\n   WHERE ph.measured_at = (SELECT MAX(measured_at) FROM pipeline_health ph2\n     WHERE ph2.connection_id = ph.connection_id)\n  ) AS overall_health_pct,\n  (SELECT ROUND(SUM(monthly_cost_usd), 0) FROM connection WHERE status != 'PAUSED') AS total_monthly_cost_usd,\n  (SELECT COUNT(*) FROM sla_breach WHERE resolved_at IS NULL) AS open_sla_breaches;",
   },
   {
-    name: "v_domain_health", dashboard: "Executive", color: "#00d8ff",
+    name: "v_domain_health", color: "#00d8ff",
     desc: "Per-domain health matrix with product breakdown and cost",
     columns: ["domain_id", "domain_name", "color_hex", "owner_team", "app_count", "connection_count", "product_count", "source_products", "business_products", "consumer_products", "healthy_count", "degraded_count", "down_count", "avg_quality_score", "monthly_cost_usd"],
     sources: ["domain", "application", "connection", "pipeline_health", "data_product"],
@@ -508,10 +490,10 @@ const VIEWS_DATA = [
       { table: "pipeline_health", role: "Latest status per connection via correlated subquery", usedColumns: ["connection_id", "status", "measured_at"] },
       { table: "data_product", role: "LEFT JOIN on domain_id for product counts and quality", usedColumns: ["domain_id", "product_type", "quality_score"] },
     ],
-    logic: "SELECT d.id, d.name, d.color_hex, d.owner_team,\n  COUNT(DISTINCT a.id) AS app_count,\n  COUNT(DISTINCT c.id) AS connection_count,\n  SUM(CASE WHEN dp.product_type = 'SOURCE_ALIGNED'\n    THEN 1 ELSE 0 END) AS source_products,\n  ...\n  ROUND(AVG(dp.quality_score), 2) AS avg_quality_score\nFROM domain d\nLEFT JOIN application a ON a.domain_id = d.id\nLEFT JOIN connection c ON c.application_id = a.id\nLEFT JOIN (...latest pipeline_health...) ph\n  ON ph.connection_id = c.id\nLEFT JOIN data_product dp ON dp.domain_id = d.id\nGROUP BY d.id;",
+    logic: "SELECT\n  d.id AS domain_id, d.name AS domain_name, d.color_hex, d.owner_team,\n  COUNT(DISTINCT a.id) AS app_count,\n  COUNT(DISTINCT c.id) AS connection_count,\n  COUNT(DISTINCT dp.id) AS product_count,\n  SUM(CASE WHEN dp.product_type = 'SOURCE_ALIGNED' THEN 1 ELSE 0 END) AS source_products,\n  SUM(CASE WHEN dp.product_type = 'BUSINESS' THEN 1 ELSE 0 END) AS business_products,\n  SUM(CASE WHEN dp.product_type = 'CONSUMER_ALIGNED' THEN 1 ELSE 0 END) AS consumer_products,\n  SUM(CASE WHEN ph.status = 'HEALTHY' THEN 1 ELSE 0 END) AS healthy_count,\n  SUM(CASE WHEN ph.status = 'DEGRADED' THEN 1 ELSE 0 END) AS degraded_count,\n  SUM(CASE WHEN ph.status = 'DOWN' THEN 1 ELSE 0 END) AS down_count,\n  ROUND(AVG(dp.quality_score), 2) AS avg_quality_score,\n  ROUND(SUM(c.monthly_cost_usd), 0) AS monthly_cost_usd\nFROM domain d\nLEFT JOIN application a ON a.domain_id = d.id\nLEFT JOIN connection c ON c.application_id = a.id\nLEFT JOIN (\n  SELECT ph1.connection_id, ph1.status\n  FROM pipeline_health ph1\n  WHERE ph1.measured_at = (SELECT MAX(ph2.measured_at)\n    FROM pipeline_health ph2 WHERE ph2.connection_id = ph1.connection_id)\n) ph ON ph.connection_id = c.id\nLEFT JOIN data_product dp ON dp.domain_id = d.id\nGROUP BY d.id;",
   },
   {
-    name: "v_exec_kpis", dashboard: "Executive", color: "#00d8ff",
+    name: "v_exec_kpis", color: "#00d8ff",
     desc: "Executive KPI scorecard — uptime, latency, tiers, breaches",
     columns: ["total_pipelines", "active_pipelines", "uptime_pct", "avg_latency_sec", "total_products", "gold_products", "silver_products", "bronze_products", "total_domains", "total_monthly_cost", "open_breaches", "critical_breaches", "total_consumers", "gold_avg_quality"],
     sources: ["connection", "pipeline_health", "data_product", "domain", "sla_breach", "data_product_consumer"],
@@ -537,10 +519,10 @@ const VIEWS_DATA = [
       { table: "data_product", role: "Product counts by tier and quality scores", usedColumns: ["tier", "quality_score"] },
       { table: "sla_breach", role: "Open and critical breach counts", usedColumns: ["resolved_at", "severity"] },
     ],
-    logic: "Single-row SELECT with scalar subqueries:\n• Uptime: AVG(CASE WHEN status='HEALTHY'...) from latest pipeline_health\n• Latency: AVG(avg_latency_sec) from latest snapshot\n• Tier counts: COUNT(*) WHERE tier IN ('GOLD','SILVER','BRONZE')\n• Breaches: COUNT WHERE severity IN ('HIGH','CRITICAL') AND resolved_at IS NULL\n• Gold quality: AVG(quality_score)*100 WHERE tier='GOLD'",
+    logic: "SELECT\n  (SELECT COUNT(*) FROM connection) AS total_pipelines,\n  (SELECT COUNT(*) FROM connection WHERE status = 'ACTIVE') AS active_pipelines,\n  (SELECT ROUND(AVG(CASE WHEN ph.status = 'HEALTHY' THEN 1.0 ELSE 0.0 END) * 100, 1)\n   FROM pipeline_health ph\n   WHERE ph.measured_at = (SELECT MAX(ph2.measured_at)\n     FROM pipeline_health ph2 WHERE ph2.connection_id = ph.connection_id)\n  ) AS uptime_pct,\n  (SELECT ROUND(AVG(ph.avg_latency_sec), 0)\n   FROM pipeline_health ph\n   WHERE ph.measured_at = (SELECT MAX(ph2.measured_at)\n     FROM pipeline_health ph2 WHERE ph2.connection_id = ph.connection_id)\n  ) AS avg_latency_sec,\n  (SELECT COUNT(*) FROM data_product) AS total_products,\n  (SELECT COUNT(*) FROM data_product WHERE tier = 'GOLD') AS gold_products,\n  (SELECT COUNT(*) FROM data_product WHERE tier = 'SILVER') AS silver_products,\n  (SELECT COUNT(*) FROM data_product WHERE tier = 'BRONZE') AS bronze_products,\n  (SELECT COUNT(*) FROM domain) AS total_domains,\n  (SELECT ROUND(SUM(monthly_cost_usd), 0) FROM connection WHERE status != 'PAUSED') AS total_monthly_cost,\n  (SELECT COUNT(*) FROM sla_breach WHERE resolved_at IS NULL) AS open_breaches,\n  (SELECT COUNT(*) FROM sla_breach WHERE severity IN ('HIGH','CRITICAL') AND resolved_at IS NULL) AS critical_breaches,\n  (SELECT COUNT(*) FROM data_product_consumer) AS total_consumers,\n  (SELECT ROUND(AVG(quality_score) * 100, 1) FROM data_product WHERE tier = 'GOLD') AS gold_avg_quality;",
   },
   {
-    name: "v_lineage_graph", dashboard: "Business", color: "#a78bfa",
+    name: "v_lineage_graph", color: "#a78bfa",
     desc: "Product nodes and lineage edges for D3 graph rendering",
     columns: ["node_type", "node_id", "node_label", "tier", "quality_score", "product_type", "domain_id", "domain_name", "color_hex", "source_id", "target_id", "edge_type", "edge_desc"],
     sources: ["data_product", "domain", "lineage_edge"],
@@ -567,7 +549,7 @@ const VIEWS_DATA = [
     logic: "UNION ALL of two selects:\n\n1) Product nodes:\nSELECT 'product', dp.id, dp.name, dp.tier,\n  dp.quality_score, dp.product_type, d.id, d.name, d.color_hex,\n  NULL, NULL, NULL, NULL\nFROM data_product dp\nJOIN domain d ON d.id = dp.domain_id\n\n2) Lineage edges:\nSELECT 'edge', le.id, le.description, NULL, NULL,\n  NULL, NULL, NULL, NULL,\n  le.source_product_id, le.target_product_id,\n  le.edge_type, le.description\nFROM lineage_edge le;",
   },
   {
-    name: "v_product_flow", dashboard: "Business", color: "#a78bfa",
+    name: "v_product_flow", color: "#a78bfa",
     desc: "Source → target edges with metadata for Sankey diagrams",
     columns: ["id", "source_name", "source_type", "source_domain", "source_color", "target_name", "target_type", "target_domain", "target_color", "edge_type"],
     sources: ["lineage_edge", "data_product", "domain"],
@@ -593,7 +575,7 @@ const VIEWS_DATA = [
     logic: "SELECT le.id,\n  src.name, src.product_type, src.domain_id, sd.color_hex,\n  tgt.name, tgt.product_type, tgt.domain_id, td.color_hex,\n  le.edge_type\nFROM lineage_edge le\nJOIN data_product src ON src.id = le.source_product_id\nJOIN data_product tgt ON tgt.id = le.target_product_id\nJOIN domain sd ON sd.id = src.domain_id\nJOIN domain td ON td.id = tgt.domain_id;",
   },
   {
-    name: "v_pipeline_status", dashboard: "Developer", color: "#22c55e",
+    name: "v_pipeline_status", color: "#22c55e",
     desc: "Per-connection operational status with health and errors",
     columns: ["connection_id", "connection_name", "connector_type", "connection_status", "sync_frequency", "monthly_cost_usd", "rows_per_sync_avg", "app_name", "app_type", "domain_name", "color_hex", "destination_name", "health_status", "last_success_at", "failure_streak", "avg_latency_sec", "error_count_7d"],
     sources: ["connection", "application", "domain", "destination", "pipeline_health", "sync_daily_stats"],
@@ -627,7 +609,7 @@ const VIEWS_DATA = [
     logic: "SELECT c.*, a.name, d.name, dest.name,\n  ph.status, ph.last_success_at,\n  ph.failure_streak, ph.avg_latency_sec,\n  COALESCE(err.error_count_7d, 0)\nFROM connection c\nJOIN application a ON a.id = c.application_id\nJOIN domain d ON d.id = a.domain_id\nJOIN destination dest ON dest.id = c.destination_id\nLEFT JOIN (\n  SELECT ... FROM pipeline_health ph1\n  WHERE ph1.measured_at = (\n    SELECT MAX(measured_at) FROM pipeline_health ph2\n    WHERE ph2.connection_id = ph1.connection_id)\n) ph ON ph.connection_id = c.id\nLEFT JOIN (\n  SELECT connection_id, SUM(errors_count)\n  FROM sync_daily_stats\n  WHERE measured_date >= DATE('now','-7 days')\n  GROUP BY connection_id\n) err ON err.connection_id = c.id;",
   },
   {
-    name: "v_daily_volume", dashboard: "Developer", color: "#22c55e",
+    name: "v_daily_volume", color: "#22c55e",
     desc: "Daily ingestion volume by domain for time-series charts",
     columns: ["measured_date", "domain_id", "domain_name", "color_hex", "total_rows", "total_syncs", "total_errors"],
     sources: ["sync_daily_stats", "connection", "application", "domain"],
@@ -649,7 +631,7 @@ const VIEWS_DATA = [
     logic: "SELECT sds.measured_date,\n  d.id, d.name, d.color_hex,\n  SUM(sds.rows_synced) AS total_rows,\n  SUM(sds.syncs_completed) AS total_syncs,\n  SUM(sds.errors_count) AS total_errors\nFROM sync_daily_stats sds\nJOIN connection c ON c.id = sds.connection_id\nJOIN application a ON a.id = c.application_id\nJOIN domain d ON d.id = a.domain_id\nGROUP BY sds.measured_date, d.id\nORDER BY sds.measured_date;",
   },
   {
-    name: "v_failure_patterns", dashboard: "Developer", color: "#22c55e",
+    name: "v_failure_patterns", color: "#22c55e",
     desc: "Error rates by day-of-week for seasonal pattern detection",
     columns: ["day_of_week", "measured_date", "domain_name", "color_hex", "total_errors", "total_syncs", "error_rate_pct"],
     sources: ["sync_daily_stats", "connection", "application", "domain"],
@@ -702,13 +684,13 @@ function ERDDiagram() {
   const destCols = ["id  PK", "name", "type", "region", "database_name", "created_at"];
   const dpCols = ["id  PK", "name", "domain_id  FK", "product_type", "tier", "quality_score", "sla_freshness", "owner", "description"];
   const leCols = ["id  PK", "source_product_id  FK", "target_product_id  FK", "edge_type", "description"];
-  const slCols = ["id  PK", "connection_id  FK", "event_type", "rows_synced", "bytes_synced", "duration_sec", "started_at"];
+  const slCols = ["id  PK", "connection_id  FK", "sync_id", "event_type", "message", "rows_synced", "bytes_synced", "started_at", "completed_at", "duration_sec"];
   const phCols = ["connection_id  FK", "measured_at", "status", "last_success_at", "failure_streak", "avg_latency_sec"];
   const dpcCols = ["id  PK", "data_product_id  FK", "consumer_name", "consumer_type", "team", "access_frequency"];
   const dpsCols = ["data_product_id  FK", "connection_id  FK", "table_name"];
   const sdsCols = ["connection_id  FK", "measured_date", "syncs_completed", "rows_synced", "errors_count", "avg_duration_sec"];
-  const scCols = ["id  PK", "connection_id  FK", "change_type", "table_name", "column_name", "detected_at"];
-  const gpCols = ["id  PK", "name", "policy_type", "scope", "domain_id  FK", "enforced"];
+  const scCols = ["id  PK", "connection_id  FK", "change_type", "schema_name", "table_name", "column_name", "detected_at"];
+  const gpCols = ["id  PK", "name", "policy_type", "description", "scope", "domain_id  FK", "enforced"];
   const sbCols = ["id  PK", "data_product_id  FK", "breach_type", "severity", "expected_value", "actual_value", "detected_at", "resolved_at"];
 
   const r1y = 90;
@@ -724,22 +706,22 @@ function ERDDiagram() {
 
   const entities: Ent[] = [
     { name: "domain",       x: c(0), y: r1y, w: colW, color: "#a78bfa", cols: domainCols },
-    { name: "application",  x: c(1), y: r1y, w: colW, color: "#e76f51", cols: appCols },
-    { name: "connection",   x: c(2), y: r1y, w: colW, color: "#00d8ff", cols: connCols },
-    { name: "destination",  x: c(3), y: r1y, w: colW, color: "#94a3b8", cols: destCols },
+    { name: "application",  x: c(1), y: r1y, w: colW, color: "#a78bfa", cols: appCols },
+    { name: "connection",   x: c(2), y: r1y, w: colW, color: "#a78bfa", cols: connCols },
+    { name: "destination",  x: c(3), y: r1y, w: colW, color: "#a78bfa", cols: destCols },
 
     { name: "data_product",          x: c(0), y: r2y, w: colW, color: "#22c55e", cols: dpCols },
-    { name: "lineage_edge",          x: c(1), y: r2y, w: colW, color: "#eab308", cols: leCols },
+    { name: "lineage_edge",          x: c(1), y: r2y, w: colW, color: "#22c55e", cols: leCols },
     { name: "sync_log",              x: c(2), y: r2y, w: colW, color: "#00d8ff", cols: slCols },
-    { name: "pipeline_health",       x: c(3), y: r2y, w: colW, color: "#22c55e", cols: phCols },
+    { name: "pipeline_health",       x: c(3), y: r2y, w: colW, color: "#00d8ff", cols: phCols },
 
-    { name: "data_product_consumer", x: c(0), y: r2t2yLeft, w: colW, color: "#c2702e", cols: dpcCols },
-    { name: "data_product_source",   x: c(1), y: r2t2yLeft, w: colW, color: "#94a3b8", cols: dpsCols },
-    { name: "sync_daily_stats",      x: c(2), y: r2t2yRight, w: colW, color: "#a78bfa", cols: sdsCols },
-    { name: "schema_change",         x: c(3), y: r2t2yRight, w: colW, color: "#eab308", cols: scCols },
+    { name: "data_product_consumer", x: c(0), y: r2t2yLeft, w: colW, color: "#22c55e", cols: dpcCols },
+    { name: "data_product_source",   x: c(1), y: r2t2yLeft, w: colW, color: "#22c55e", cols: dpsCols },
+    { name: "sync_daily_stats",      x: c(2), y: r2t2yRight, w: colW, color: "#00d8ff", cols: sdsCols },
+    { name: "schema_change",         x: c(3), y: r2t2yRight, w: colW, color: "#00d8ff", cols: scCols },
 
     { name: "governance_policy", x: c(0), y: r3y, w: colW, color: "#f472b6", cols: gpCols },
-    { name: "sla_breach",        x: c(1), y: r3y, w: colW, color: "#ef4444", cols: sbCols },
+    { name: "sla_breach",        x: c(1), y: r3y, w: colW, color: "#f472b6", cols: sbCols },
   ];
 
   const eMap = Object.fromEntries(entities.map((e) => [e.name, e]));
@@ -844,10 +826,10 @@ function ERDDiagram() {
       <rect x={z4.x} y={z4.y} width={z4.w} height={z4.h} rx="16" fill="#f472b6" opacity="0.03" stroke="#f472b6" strokeWidth="1" strokeOpacity="0.08" />
 
       {/* Zone labels */}
-      <text x={z1.x + 16} y={z1.y + 22} fill="#a78bfa" opacity="0.35" fontWeight="700" style={{ fontSize: 12, letterSpacing: "0.15em" }}>CORE PLATFORM</text>
-      <text x={z2.x + 16} y={z2.y + 22} fill="#22c55e" opacity="0.35" fontWeight="700" style={{ fontSize: 12, letterSpacing: "0.15em" }}>DATA MESH LAYER</text>
-      <text x={z3.x + 16} y={z3.y + 22} fill="#00d8ff" opacity="0.35" fontWeight="700" style={{ fontSize: 12, letterSpacing: "0.15em" }}>PIPELINE OPERATIONS</text>
-      <text x={z4.x + 16} y={z4.y + 22} fill="#f472b6" opacity="0.35" fontWeight="700" style={{ fontSize: 12, letterSpacing: "0.15em" }}>GOVERNANCE & QUALITY</text>
+      <text x={z1.x + 16} y={z1.y + 22} fill="#a78bfa" opacity="0.8" fontWeight="800" style={{ fontSize: 13, letterSpacing: "0.12em" }}>CORE PLATFORM</text>
+      <text x={z2.x + 16} y={z2.y + 22} fill="#22c55e" opacity="0.8" fontWeight="800" style={{ fontSize: 13, letterSpacing: "0.12em" }}>DATA MESH LAYER</text>
+      <text x={z3.x + 16} y={z3.y + 22} fill="#00d8ff" opacity="0.8" fontWeight="800" style={{ fontSize: 13, letterSpacing: "0.12em" }}>PIPELINE OPERATIONS</text>
+      <text x={z4.x + 16} y={z4.y + 22} fill="#f472b6" opacity="0.8" fontWeight="800" style={{ fontSize: 13, letterSpacing: "0.12em" }}>GOVERNANCE &amp; QUALITY</text>
 
       {/* Noodle connections */}
       {connections.map((conn, i) => {
@@ -862,7 +844,7 @@ function ERDDiagram() {
             {conn.label && (
               <g>
                 <rect x={mx - 16} y={my - 10} width="32" height="18" rx="9" fill="#ffffff" stroke={from.color} strokeWidth="0.8" strokeOpacity="0.25" />
-                <text x={mx} y={my + 3} textAnchor="middle" fill="#ffffff" opacity="0.5" fontWeight="600" style={{ fontSize: 9 }}>{conn.label}</text>
+                <text x={mx} y={my + 3} textAnchor="middle" fill="#1a1a1a" opacity="0.7" fontWeight="600" style={{ fontSize: 9 }}>{conn.label}</text>
               </g>
             )}
           </g>
@@ -887,11 +869,11 @@ function ERDDiagram() {
               const isFK = constraint === "FK";
               return (
                 <g key={`${ent.name}-${col}`}>
-                  <text x={ent.x + 14} y={cy + 15} fill={isPK ? "#1e293b" : isFK ? ent.color : "#1e293b"} fontWeight={isPK ? "600" : "400"} opacity={isPK || isFK ? 1 : 0.45} style={{ fontSize: 12.5 }}>
+                  <text x={ent.x + 14} y={cy + 15} fill={isPK ? "#1a1a1a" : isFK ? ent.color : "#1a1a1a"} fontWeight={isPK ? "600" : "400"} opacity={isPK || isFK ? 1 : 0.85} style={{ fontSize: 12.5 }}>
                     {colName}
                   </text>
                   {(isPK || isFK) && (
-                    <text x={ent.x + ent.w - 14} y={cy + 15} textAnchor="end" fill={isPK ? "#64748b" : `${ent.color}90`} fontWeight="600" style={{ fontSize: 10.5 }}>
+                    <text x={ent.x + ent.w - 14} y={cy + 15} textAnchor="end" fill={isPK ? "#374151" : ent.color} fontWeight="600" style={{ fontSize: 10.5 }}>
                       {isPK ? "PK ⚷" : "FK →"}
                     </text>
                   )}

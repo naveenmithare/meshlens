@@ -12,7 +12,7 @@ const spaceGrotesk = Space_Grotesk({ variable: "--font-space-grotesk", subsets: 
 export const metadata: Metadata = {
   title: "MeshLens — See your enterprise data mesh",
   description:
-    "Open-source visualization tool for enterprise data mesh architecture. Pipeline metadata, lineage, health, and governance in one view.",
+    "Visualization tool for enterprise data mesh architecture. Pipeline metadata, lineage, health, and governance in one view.",
   openGraph: {
     title: "MeshLens",
     description: "See your enterprise data mesh. Actually see it.",

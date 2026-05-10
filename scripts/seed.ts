@@ -29,61 +29,61 @@ const DOMAINS = [
 // ── 55 APPLICATIONS ──
 const APPS = [
   // Sales (10)
-  { name: "Salesforce", app_type: "CRM", domain_id: "sales", vendor: "Salesforce", description: "Primary CRM — opportunities, accounts, contacts, leads" },
-  { name: "HubSpot", app_type: "CRM", domain_id: "sales", vendor: "HubSpot", description: "Inbound sales CRM & marketing hub" },
+  { name: "Salesforce", app_type: "SaaS", domain_id: "sales", vendor: "Salesforce", description: "Primary CRM — opportunities, accounts, contacts, leads" },
+  { name: "HubSpot", app_type: "SaaS", domain_id: "sales", vendor: "HubSpot", description: "Inbound sales CRM & marketing hub" },
   { name: "Gong", app_type: "SaaS", domain_id: "sales", vendor: "Gong.io", description: "Revenue intelligence — call recordings, deal risk scoring" },
   { name: "Outreach", app_type: "SaaS", domain_id: "sales", vendor: "Outreach", description: "Sales engagement sequences & cadences" },
   { name: "Clari", app_type: "SaaS", domain_id: "sales", vendor: "Clari", description: "Revenue operations & forecast intelligence" },
   { name: "ZoomInfo", app_type: "API", domain_id: "sales", vendor: "ZoomInfo", description: "B2B contact & company enrichment" },
   { name: "Salesloft", app_type: "SaaS", domain_id: "sales", vendor: "Salesloft", description: "Sales engagement analytics" },
-  { name: "CPQ (Salesforce)", app_type: "CRM", domain_id: "sales", vendor: "Salesforce", description: "Configure-price-quote for complex deals" },
+  { name: "CPQ (Salesforce)", app_type: "SaaS", domain_id: "sales", vendor: "Salesforce", description: "Configure-price-quote for complex deals" },
   { name: "DocuSign", app_type: "SaaS", domain_id: "sales", vendor: "DocuSign", description: "Contract & e-signature management" },
   { name: "Salesforce Marketing Cloud", app_type: "SaaS", domain_id: "sales", vendor: "Salesforce", description: "B2B marketing automation tied to CRM" },
   // Finance (8)
-  { name: "SAP EBS", app_type: "ERP", domain_id: "finance", vendor: "SAP", description: "Core ERP — GL, AP/AR, fixed assets, cost centers" },
-  { name: "Oracle Financials", app_type: "ERP", domain_id: "finance", vendor: "Oracle", description: "General ledger, intercompany, consolidation" },
+  { name: "SAP EBS", app_type: "SaaS", domain_id: "finance", vendor: "SAP", description: "Core ERP — GL, AP/AR, fixed assets, cost centers" },
+  { name: "Oracle Financials", app_type: "SaaS", domain_id: "finance", vendor: "Oracle", description: "General ledger, intercompany, consolidation" },
   { name: "Stripe", app_type: "API", domain_id: "finance", vendor: "Stripe", description: "Payment processing — charges, refunds, disputes" },
-  { name: "NetSuite", app_type: "ERP", domain_id: "finance", vendor: "Oracle", description: "Cloud ERP — accounting & revenue recognition" },
+  { name: "NetSuite", app_type: "SaaS", domain_id: "finance", vendor: "Oracle", description: "Cloud ERP — accounting & revenue recognition" },
   { name: "Coupa", app_type: "SaaS", domain_id: "finance", vendor: "Coupa", description: "Procurement & spend management" },
   { name: "Avalara", app_type: "API", domain_id: "finance", vendor: "Avalara", description: "Tax compliance automation (sales tax, VAT)" },
   { name: "Zuora", app_type: "SaaS", domain_id: "finance", vendor: "Zuora", description: "Subscription billing & ASC 606 revenue recognition" },
   { name: "Anaplan", app_type: "SaaS", domain_id: "finance", vendor: "Anaplan", description: "Financial planning, budgeting, forecasting" },
   // Supply Chain (8)
-  { name: "SAP SCM", app_type: "ERP", domain_id: "supply-chain", vendor: "SAP", description: "Supply chain planning, MRP, demand forecasting" },
+  { name: "SAP SCM", app_type: "SaaS", domain_id: "supply-chain", vendor: "SAP", description: "Supply chain planning, MRP, demand forecasting" },
   { name: "Kinaxis", app_type: "SaaS", domain_id: "supply-chain", vendor: "Kinaxis", description: "Supply chain planning & S&OP orchestration" },
   { name: "Manhattan WMS", app_type: "SaaS", domain_id: "supply-chain", vendor: "Manhattan Associates", description: "Warehouse management — pick/pack/ship" },
   { name: "FourKites", app_type: "API", domain_id: "supply-chain", vendor: "FourKites", description: "Real-time transportation visibility & ETAs" },
-  { name: "Oracle SCM Cloud", app_type: "ERP", domain_id: "supply-chain", vendor: "Oracle", description: "Cloud procurement & order management" },
-  { name: "Kafka — Inventory Events", app_type: "STREAMING", domain_id: "supply-chain", vendor: "Confluent", description: "Real-time inventory movement events (50K msgs/sec)" },
-  { name: "Kafka — Order Events", app_type: "STREAMING", domain_id: "supply-chain", vendor: "Confluent", description: "Real-time order placement & fulfillment events" },
+  { name: "Oracle SCM Cloud", app_type: "SaaS", domain_id: "supply-chain", vendor: "Oracle", description: "Cloud procurement & order management" },
+  { name: "Kafka — Inventory Events", app_type: "Streaming", domain_id: "supply-chain", vendor: "Confluent", description: "Real-time inventory movement events (50K msgs/sec)" },
+  { name: "Kafka — Order Events", app_type: "Streaming", domain_id: "supply-chain", vendor: "Confluent", description: "Real-time order placement & fulfillment events" },
   { name: "ShipStation", app_type: "SaaS", domain_id: "supply-chain", vendor: "ShipStation", description: "Multi-carrier shipping & order fulfillment" },
   // Marketing (9)
   { name: "Google Ads", app_type: "API", domain_id: "marketing", vendor: "Google", description: "Paid search — campaigns, ad groups, keywords" },
   { name: "Meta Ads", app_type: "API", domain_id: "marketing", vendor: "Meta", description: "Social advertising — campaigns, audiences, conversions" },
   { name: "LinkedIn Ads", app_type: "API", domain_id: "marketing", vendor: "LinkedIn", description: "B2B advertising — account targeting, lead gen forms" },
   { name: "Marketo", app_type: "SaaS", domain_id: "marketing", vendor: "Adobe", description: "Marketing automation — lead scoring, nurture programs" },
-  { name: "Segment", app_type: "STREAMING", domain_id: "marketing", vendor: "Twilio", description: "Customer data platform — event collection & routing" },
-  { name: "Google Analytics 4", app_type: "ANALYTICS", domain_id: "marketing", vendor: "Google", description: "Web & app analytics — sessions, conversions, attribution" },
+  { name: "Segment", app_type: "Streaming", domain_id: "marketing", vendor: "Twilio", description: "Customer data platform — event collection & routing" },
+  { name: "Google Analytics 4", app_type: "SaaS", domain_id: "marketing", vendor: "Google", description: "Web & app analytics — sessions, conversions, attribution" },
   { name: "Braze", app_type: "SaaS", domain_id: "marketing", vendor: "Braze", description: "Cross-channel messaging — push, email, in-app" },
   { name: "Contentful", app_type: "SaaS", domain_id: "marketing", vendor: "Contentful", description: "Headless CMS for content operations" },
   { name: "Iterable", app_type: "SaaS", domain_id: "marketing", vendor: "Iterable", description: "Lifecycle marketing & experimentation" },
   // Product (9)
-  { name: "Jira", app_type: "DEVTOOLS", domain_id: "product", vendor: "Atlassian", description: "Issue tracking — sprints, epics, velocity" },
-  { name: "GitHub", app_type: "DEVTOOLS", domain_id: "product", vendor: "GitHub", description: "Source control — PRs, deployments, code review" },
+  { name: "Jira", app_type: "SaaS", domain_id: "product", vendor: "Atlassian", description: "Issue tracking — sprints, epics, velocity" },
+  { name: "GitHub", app_type: "SaaS", domain_id: "product", vendor: "GitHub", description: "Source control — PRs, deployments, code review" },
   { name: "LaunchDarkly", app_type: "API", domain_id: "product", vendor: "LaunchDarkly", description: "Feature flags — rollout %, targeting rules" },
-  { name: "Amplitude", app_type: "ANALYTICS", domain_id: "product", vendor: "Amplitude", description: "Product analytics — funnels, cohorts, retention" },
+  { name: "Amplitude", app_type: "SaaS", domain_id: "product", vendor: "Amplitude", description: "Product analytics — funnels, cohorts, retention" },
   { name: "Pendo", app_type: "SaaS", domain_id: "product", vendor: "Pendo", description: "Product experience — guides, NPS, feature usage" },
   { name: "PagerDuty", app_type: "API", domain_id: "product", vendor: "PagerDuty", description: "Incident management — alerts, on-call, escalation" },
   { name: "Datadog", app_type: "API", domain_id: "product", vendor: "Datadog", description: "Infrastructure monitoring — APM, logs, traces" },
-  { name: "Kafka — Clickstream", app_type: "STREAMING", domain_id: "product", vendor: "Confluent", description: "Real-time user clickstream (200K events/sec)" },
-  { name: "PostgreSQL — App DB", app_type: "DATABASE", domain_id: "product", vendor: "PostgreSQL", description: "Primary application database — users, tenants, subscriptions" },
+  { name: "Kafka — Clickstream", app_type: "Streaming", domain_id: "product", vendor: "Confluent", description: "Real-time user clickstream (200K events/sec)" },
+  { name: "PostgreSQL — App DB", app_type: "Database", domain_id: "product", vendor: "PostgreSQL", description: "Primary application database — users, tenants, subscriptions" },
   // HR (6)
-  { name: "Workday", app_type: "HRIS", domain_id: "hr", vendor: "Workday", description: "Core HRIS — org structure, compensation, payroll" },
+  { name: "Workday", app_type: "SaaS", domain_id: "hr", vendor: "Workday", description: "Core HRIS — org structure, compensation, payroll" },
   { name: "Greenhouse", app_type: "SaaS", domain_id: "hr", vendor: "Greenhouse", description: "Recruiting ATS — requisitions, candidates, scorecards" },
   { name: "Lattice", app_type: "SaaS", domain_id: "hr", vendor: "Lattice", description: "Performance management — reviews, goals, 1:1s" },
   { name: "Deel", app_type: "SaaS", domain_id: "hr", vendor: "Deel", description: "Global payroll & contractor management" },
   { name: "Culture Amp", app_type: "SaaS", domain_id: "hr", vendor: "Culture Amp", description: "Employee engagement surveys & pulse checks" },
-  { name: "BambooHR", app_type: "HRIS", domain_id: "hr", vendor: "BambooHR", description: "HR management — PTO, onboarding, employee records" },
+  { name: "BambooHR", app_type: "SaaS", domain_id: "hr", vendor: "BambooHR", description: "HR management — PTO, onboarding, employee records" },
   // Support (5)
   { name: "Zendesk", app_type: "SaaS", domain_id: "support", vendor: "Zendesk", description: "Help desk — tickets, agents, SLA tracking, macros" },
   { name: "Intercom", app_type: "SaaS", domain_id: "support", vendor: "Intercom", description: "Live chat, product tours, knowledge base articles" },
@@ -265,6 +265,23 @@ const LINEAGE_EDGES = [
   { source: "src-surveymonkey-raw", target: "biz-support-metrics", type: "FEEDS", desc: "CSAT survey results → support metrics" },
   { source: "src-zendesk-raw", target: "biz-customer-health", type: "FEEDS", desc: "Support ticket patterns → health score" },
   { source: "src-intercom-raw", target: "biz-customer-health", type: "FEEDS", desc: "Chat interactions → health signals" },
+  // Previously orphaned sources → Business
+  { source: "src-kafka-inventory", target: "biz-order-fulfillment", type: "FEEDS", desc: "Inventory events → fulfillment stock checks" },
+  { source: "src-zoominfo-raw", target: "biz-customer-360", type: "FEEDS", desc: "Firmographic & intent data → customer profile" },
+  { source: "src-outreach-raw", target: "biz-pipeline-forecast", type: "FEEDS", desc: "Sequence engagement → pipeline scoring" },
+  { source: "src-salesloft-raw", target: "biz-pipeline-forecast", type: "FEEDS", desc: "Cadence metrics → pipeline signals" },
+  { source: "src-sfmc-raw", target: "biz-campaign-perf", type: "FEEDS", desc: "Email engagement metrics → campaign performance" },
+  { source: "src-avalara-raw", target: "biz-revenue-ledger", type: "FEEDS", desc: "Tax calculations → revenue adjustments" },
+  { source: "src-anaplan-raw", target: "biz-spend-analytics", type: "FEEDS", desc: "Budget & planning data → spend variance" },
+  { source: "src-oracle-scm-raw", target: "biz-vendor-performance", type: "FEEDS", desc: "Procurement data → vendor delivery scores" },
+  { source: "src-braze-raw", target: "biz-campaign-perf", type: "FEEDS", desc: "Push & in-app engagement → campaign metrics" },
+  { source: "src-contentful-raw", target: "biz-campaign-perf", type: "FEEDS", desc: "Content performance → campaign attribution" },
+  { source: "src-iterable-raw", target: "biz-attribution", type: "FEEDS", desc: "Email workflow events → attribution touchpoints" },
+  { source: "src-launchdarkly-raw", target: "biz-product-usage", type: "FEEDS", desc: "Feature flag exposure → usage analytics" },
+  { source: "src-postgres-raw", target: "biz-product-usage", type: "FEEDS", desc: "App DB records → product usage metrics" },
+  { source: "src-deel-raw", target: "biz-employee-lifecycle", type: "FEEDS", desc: "Contractor data → workforce lifecycle" },
+  { source: "src-statuspage-raw", target: "biz-incident-metrics", type: "FEEDS", desc: "Service status → incident tracking" },
+  { source: "src-confluence-raw", target: "biz-support-metrics", type: "FEEDS", desc: "KB article usage → support content metrics" },
 
   // Business → Business (cross-domain)
   { source: "biz-customer-360", target: "biz-pipeline-forecast", type: "DERIVES", desc: "Customer health score informs pipeline weighting" },
@@ -408,9 +425,10 @@ console.log(`  ${APPS.length} applications`);
 
 // Connections
 const connTypes: Record<string, string[]> = {
-  CRM: ["fivetran"], ERP: ["fivetran", "custom"], STREAMING: ["kafka"], API: ["api", "fivetran"],
-  DATABASE: ["airbyte", "fivetran"], SaaS: ["fivetran"], DEVTOOLS: ["api", "fivetran"],
-  HRIS: ["fivetran"], ANALYTICS: ["fivetran", "api"], MARKETPLACE: ["fivetran"],
+  SaaS: ["fivetran", "custom", "api"],
+  Database: ["airbyte", "fivetran"],
+  API: ["api", "fivetran"],
+  Streaming: ["kafka"],
 };
 const freqs = ["5min", "15min", "1hr", "6hr", "24hr"];
 const statuses = ["ACTIVE","ACTIVE","ACTIVE","ACTIVE","ACTIVE","ACTIVE","ACTIVE","PAUSED","BROKEN","ACTIVE"];
@@ -426,7 +444,7 @@ for (let i = 0; i < APPS.length; i++) {
   const ctype = pick(connTypes[app.app_type] || ["fivetran"]);
   const dest = pick(DESTS);
   const status = pick(statuses);
-  const freq = app.app_type === "STREAMING" ? "5min" : pick(freqs);
+  const freq = app.app_type === "Streaming" ? "5min" : pick(freqs);
   const schema = `raw_${app.name.toLowerCase().replace(/[^a-z0-9]+/g, "_")}`;
   const cost = costs[freq as keyof typeof costs] * (0.7 + Math.random() * 0.6);
   const rowsAvg = Math.floor(randBetween(500, 200000));
@@ -443,14 +461,52 @@ for (const dp of DATA_PRODUCTS) {
 }
 console.log(`  ${DATA_PRODUCTS.length} data products (${DATA_PRODUCTS.filter(d => d.product_type === "SOURCE_ALIGNED").length} source, ${DATA_PRODUCTS.filter(d => d.product_type === "BUSINESS").length} business, ${DATA_PRODUCTS.filter(d => d.product_type === "CONSUMER_ALIGNED").length} consumer)`);
 
-// Data Product Sources
+// Data Product Sources — accurate 1:1 mapping for SOURCE_ALIGNED products
 const insertDPS = db.prepare("INSERT OR IGNORE INTO data_product_source (data_product_id, connection_id, table_name) VALUES (?, ?, ?)");
 let dpsCount = 0;
+const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+const PRODUCT_TO_APP: Record<string, string> = {
+  "Inventory Events Stream": "Kafka — Inventory Events",
+  "Order Events Stream": "Kafka — Order Events",
+  "Segment Events Stream": "Segment",
+  "Clickstream Events": "Kafka — Clickstream",
+  "CPQ": "CPQ (Salesforce)",
+  "SF Marketing Cloud": "Salesforce Marketing Cloud",
+  "GA4": "Google Analytics 4",
+  "PostgreSQL": "PostgreSQL — App DB",
+};
+
 for (const dp of DATA_PRODUCTS) {
-  const domainConns = connIds.filter((_, i) => APPS[i].domain_id === dp.domain_id);
-  for (const connId of domainConns.slice(0, Math.min(3, domainConns.length))) {
-    insertDPS.run(dp.id, connId, `${dp.name.toLowerCase().replace(/\s+/g, "_")}_raw`);
-    dpsCount++;
+  if (dp.product_type === "SOURCE_ALIGNED") {
+    const explicitAppName = PRODUCT_TO_APP[dp.name];
+    let bestIdx = -1, bestScore = 0;
+    if (explicitAppName) {
+      bestIdx = APPS.findIndex(a => a.name === explicitAppName && a.domain_id === dp.domain_id);
+    }
+    if (bestIdx < 0) {
+      const dpNorm = norm(dp.name);
+      for (let i = 0; i < APPS.length; i++) {
+        if (APPS[i].domain_id !== dp.domain_id) continue;
+        const appNorm = norm(APPS[i].name);
+        if (appNorm === dpNorm) { bestIdx = i; break; }
+        if (dpNorm.includes(appNorm) || appNorm.includes(dpNorm)) {
+          const score = Math.min(appNorm.length, dpNorm.length) / Math.max(appNorm.length, dpNorm.length);
+          if (score > bestScore) { bestScore = score; bestIdx = i; }
+        }
+      }
+    }
+    if (bestIdx >= 0) {
+      insertDPS.run(dp.id, connIds[bestIdx], `${dp.name.toLowerCase().replace(/\s+/g, "_")}_raw`);
+      dpsCount++;
+    } else {
+      console.warn(`  ⚠ No app match for source product: ${dp.name} (${dp.domain_id})`);
+    }
+  } else {
+    const domainConns = connIds.filter((_, i) => APPS[i].domain_id === dp.domain_id);
+    for (const connId of domainConns.slice(0, Math.min(3, domainConns.length))) {
+      insertDPS.run(dp.id, connId, `${dp.name.toLowerCase().replace(/\s+/g, "_")}_raw`);
+      dpsCount++;
+    }
   }
 }
 console.log(`  ${dpsCount} data product sources`);

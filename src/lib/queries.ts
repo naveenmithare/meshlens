@@ -34,10 +34,6 @@ export function getLineageGraph() {
   return { nodes, edges };
 }
 
-export function getProductFlow() {
-  return getDb().prepare("SELECT * FROM v_product_flow").all();
-}
-
 export function getPipelineStatus() {
   return getDb().prepare("SELECT * FROM v_pipeline_status").all();
 }
@@ -46,31 +42,8 @@ export function getDailyVolume() {
   return getDb().prepare("SELECT * FROM v_daily_volume").all();
 }
 
-export function getFailurePatterns() {
-  return getDb().prepare("SELECT * FROM v_failure_patterns ORDER BY measured_date").all();
-}
-
 export function getDomains() {
   return getDb().prepare("SELECT * FROM domain ORDER BY name").all();
-}
-
-export function getApplications(domainId?: string) {
-  if (domainId) {
-    return getDb()
-      .prepare(
-        `SELECT a.*, d.name AS domain_name, d.color_hex
-         FROM application a JOIN domain d ON d.id = a.domain_id
-         WHERE a.domain_id = ? ORDER BY a.name`
-      )
-      .all(domainId);
-  }
-  return getDb()
-    .prepare(
-      `SELECT a.*, d.name AS domain_name, d.color_hex
-       FROM application a JOIN domain d ON d.id = a.domain_id
-       ORDER BY d.name, a.name`
-    )
-    .all();
 }
 
 export function getDataProducts(domainId?: string) {
@@ -132,18 +105,6 @@ export function getGovernancePolicies() {
     .all();
 }
 
-export function getSlABreaches() {
-  return getDb()
-    .prepare(
-      `SELECT sb.*, dp.name AS product_name, dp.tier, dp.product_type, d.name AS domain_name, d.color_hex
-       FROM sla_breach sb
-       JOIN data_product dp ON dp.id = sb.data_product_id
-       JOIN domain d ON d.id = dp.domain_id
-       ORDER BY sb.detected_at DESC`
-    )
-    .all();
-}
-
 export function getConsumers() {
   return getDb()
     .prepare(
@@ -170,6 +131,19 @@ export function getProductLineageSummary() {
     .all() as { product_id: string; source_names: string }[];
 }
 
+export function getAppProductLinks() {
+  return getDb()
+    .prepare(
+      `SELECT DISTINCT a.id AS app_id, dps.data_product_id AS product_id
+       FROM data_product_source dps
+       JOIN connection c ON c.id = dps.connection_id
+       JOIN application a ON a.id = c.application_id
+       JOIN data_product dp ON dp.id = dps.data_product_id
+       WHERE dp.product_type = 'SOURCE_ALIGNED'`
+    )
+    .all() as { app_id: string; product_id: string }[];
+}
+
 export function getApplicationsWithConnections() {
   return getDb()
     .prepare(
@@ -186,19 +160,3 @@ export function getApplicationsWithConnections() {
     .all();
 }
 
-export function getConnectionCosts() {
-  return getDb()
-    .prepare(
-      `SELECT d.name AS domain_name, d.color_hex,
-              SUM(c.monthly_cost_usd) AS total_cost,
-              COUNT(c.id) AS connection_count,
-              AVG(c.monthly_cost_usd) AS avg_cost
-       FROM connection c
-       JOIN application a ON a.id = c.application_id
-       JOIN domain d ON d.id = a.domain_id
-       WHERE c.status != 'PAUSED'
-       GROUP BY d.id
-       ORDER BY total_cost DESC`
-    )
-    .all();
-}

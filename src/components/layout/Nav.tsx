@@ -8,8 +8,6 @@ const links = [
   { href: "/", label: "Introduction" },
   { href: "/meshatlas", label: "MeshAtlas" },
   { href: "/semantic", label: "Semantic Layer" },
-  { href: "/catalogue", label: "Product Catalogue" },
-  { href: "/stories", label: "Data Stories" },
 ];
 
 const THEME_PALETTE = [
@@ -110,7 +108,7 @@ export default function Nav() {
     <nav className="fixed top-0 left-0 right-0 z-50">
       <div className="absolute inset-x-0 top-0 h-full bg-[var(--nav-bg,#f4f4f4)]" style={{ background: "var(--nav-bg, #f4f4f4)" }} />
       <div className="relative flex justify-center px-6 pt-4 pb-2">
-      <div className="w-full max-w-[1200px] flex items-center justify-between px-3 py-2 bg-white shadow-[0_2px_24px_rgba(0,0,0,0.06)] rounded-2xl">
+      <div className="w-full max-w-[1200px] flex items-center justify-between px-3 py-2 bg-white shadow-[0_2px_24px_rgba(0,0,0,0.06)] rounded-t-2xl">
         <Link href="/" className="flex items-center gap-2.5 pl-3 group">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" className="text-mesh-accent">
             <circle cx="12" cy="6" r="2.5" stroke="currentColor" strokeWidth="1.5" />

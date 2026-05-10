@@ -2,7 +2,6 @@
 
 interface Props {
   overview: any;
-  domains: any[];
 }
 
 const STORIES = [
@@ -44,7 +43,7 @@ const STORIES = [
   },
 ];
 
-export default function StoriesClient({ overview, domains }: Props) {
+export default function StoriesClient({ overview }: Props) {
   return (
     <div className="min-h-screen pt-28 px-8 pb-24">
       <div className="max-w-[1200px] mx-auto">

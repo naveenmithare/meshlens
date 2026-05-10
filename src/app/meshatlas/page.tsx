@@ -6,6 +6,7 @@ import {
   getDataProducts,
   getGovernancePolicies,
   getExecKpis,
+  getAppProductLinks,
 } from "@/lib/queries";
 import MeshAtlasClient from "./MeshAtlasClient";
 
@@ -20,6 +21,7 @@ export default function MeshAtlasPage() {
   const products = getDataProducts() as any[];
   const policies = getGovernancePolicies() as any[];
   const execKpis = getExecKpis() as any;
+  const appProductLinks = getAppProductLinks();
 
   return (
     <MeshAtlasClient
@@ -30,6 +32,7 @@ export default function MeshAtlasPage() {
       products={products}
       policies={policies}
       execKpis={execKpis}
+      appProductLinks={appProductLinks}
     />
   );
 }
