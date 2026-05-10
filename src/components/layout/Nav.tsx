@@ -39,12 +39,12 @@ interface SavedSettings {
 }
 
 function loadSettings(): SavedSettings {
-  if (typeof window === "undefined") return { accent: "#56B265", bg: "#f4f4f4", font: "inter" };
+  if (typeof window === "undefined") return { accent: "#000000", bg: "#fffef5", font: "dm-sans" };
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) return JSON.parse(raw);
   } catch { /* ignore */ }
-  return { accent: "#56B265", bg: "#f4f4f4", font: "inter" };
+  return { accent: "#000000", bg: "#fffef5", font: "dm-sans" };
 }
 
 function saveSettings(s: SavedSettings) {

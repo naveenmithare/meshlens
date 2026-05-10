@@ -41,8 +41,9 @@ export interface PlaygroundConfig {
     srcAngle: number; bizAngle: number; conAngle: number;
     xOffset: number; yOffset: number;
     perProduct: Record<string, { radius: number; angle: number; x: number; y: number; rotation: number }>;
+    labelArcGap: number; flipIndex: number; ringGap: number; ringStroke: number; ringFillOpacity: number;
   };
-  show: { productLabels: boolean; layerLabels: boolean; domainNames: boolean; domainLegend: boolean; appTypeLegend: boolean; dataFlowArrow: boolean; separators: boolean; arcBands: boolean; flowAnimation: boolean; searchBar: boolean; smartLabels: boolean; productAnatomyLegend: boolean; dataFlowLegend: boolean; bubbleSizeLegend: boolean; flowStatusLegend: boolean };
+  show: { productLabels: boolean; layerLabels: boolean; domainNames: boolean; domainLegend: boolean; appTypeLegend: boolean; dataFlowArrow: boolean; separators: boolean; arcBands: boolean; flowAnimation: boolean; searchBar: boolean; smartLabels: boolean; productAnatomyLegend: boolean; dataFlowLegend: boolean; bubbleSizeLegend: boolean; flowStatusLegend: boolean; dragHandles: boolean; pipelineLegend: boolean };
   searchBarUi: {
     x: number; y: number;
     width: number; height: number;
@@ -68,7 +69,7 @@ export interface PlaygroundConfig {
   };
   animationPaused: boolean;
   domainLabelPos: Record<string, { x: number; y: number }>;
-  legendPos: { domain: { x: number; y: number }; appType: { x: number; y: number }; dataFlow: { x: number; y: number }; productAnatomy: { x: number; y: number }; bubbleSize: { x: number; y: number }; flowStatus: { x: number; y: number } };
+  legendPos: { domain: { x: number; y: number }; appType: { x: number; y: number }; dataFlow: { x: number; y: number }; productAnatomy: { x: number; y: number }; bubbleSize: { x: number; y: number }; flowStatus: { x: number; y: number }; pipeline: { x: number; y: number } };
   /** Per arc layer label offset (SVG px); drag on-canvas or tune in playground */
   layerLabelPos: Partial<Record<"APPS" | "SOURCE_ALIGNED" | "BUSINESS" | "CONSUMER_ALIGNED", { x: number; y: number }>>;
   /** Legend typography & colors; empty string color uses main `text` */
@@ -741,6 +742,11 @@ export const DEFAULTS: PlaygroundConfig = {
       "src-zoominfo-raw": { radius: -1, angle: -8, x: -49.1, y: -23.4, rotation: -159 },
       "src-zuora-raw": { radius: 38, angle: -47, x: -24.6, y: -43.6, rotation: -127 }
     },
+    labelArcGap: 18,
+    flipIndex: 25,
+    ringGap: 8,
+    ringStroke: 1.1,
+    ringFillOpacity: 0.95,
   },
   show: {
     productLabels: true,
@@ -757,7 +763,9 @@ export const DEFAULTS: PlaygroundConfig = {
     productAnatomyLegend: true,
     dataFlowLegend: true,
     bubbleSizeLegend: true,
-    flowStatusLegend: true
+    flowStatusLegend: true,
+    dragHandles: true,
+    pipelineLegend: true,
   },
   searchBarUi: {
     x: -480,
@@ -857,7 +865,11 @@ export const DEFAULTS: PlaygroundConfig = {
     flowStatus: {
       x: -426.5,
       y: -808.4
-    }
+    },
+    pipeline: {
+      x: -31.3,
+      y: -860
+    },
   },
   legendUi: {
     domainTitleSize: 6.5,
@@ -929,7 +941,7 @@ export const DEFAULTS: PlaygroundConfig = {
       fontWeight: 900,
       opacity: 1,
       width: 425,
-      lineHeight: 1.2,
+      lineHeight: 1.5,
       textAlign: "justify" as const,
     },
     {
