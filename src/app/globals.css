@@ -1,0 +1,145 @@
+@import "tailwindcss";
+
+@theme {
+  /* ── Surface & text ─────────────────────────── */
+  --color-mesh-bg: #f4f4f4;
+  --color-mesh-bg-light: #ececec;
+  --color-mesh-bg-card: #ffffff;
+  --color-mesh-text: #1a1a1a;
+  --color-mesh-text-muted: #71717a;
+  --color-mesh-accent: #56B265;
+  --color-mesh-accent-dim: rgba(86, 178, 101, 0.10);
+
+  /* ── Fresh palette ──────────────────────────── */
+  --color-fresh-green-tea: #F2F6EB;
+  --color-fresh-sunflower: #FFCE55;
+  --color-fresh-rose: #FB6E52;
+  --color-fresh-sour-apple: #DBF58E;
+  --color-fresh-jade: #92C3A4;
+  --color-fresh-forest: #56B265;
+
+  /* ── Domain colors ──────────────────────────── */
+  --color-domain-sales: #FB6E52;
+  --color-domain-supply-chain: #56B265;
+  --color-domain-finance: #FFCE55;
+  --color-domain-marketing: #92C3A4;
+  --color-domain-product: #5b9bd5;
+  --color-domain-hr: #e8a0bf;
+  --color-domain-support: #f09860;
+
+  /* ── Status ─────────────────────────────────── */
+  --color-health-healthy: #56B265;
+  --color-health-degraded: #FFCE55;
+  --color-health-down: #FB6E52;
+
+  /* ── Tiers ──────────────────────────────────── */
+  --color-tier-gold: #FFCE55;
+  --color-tier-silver: #92C3A4;
+  --color-tier-bronze: #c2702e;
+
+  /* ── Border ─────────────────────────────────── */
+  --color-mesh-border: #e8e8e2;
+  --color-mesh-border-light: #f0f0ea;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.011em;
+  color: #1a1a1a;
+  background: #f4f4f4;
+  font-size: 16px;
+}
+
+html[data-font="dm-sans"] body { font-family: var(--font-dm-sans), system-ui, sans-serif; }
+html[data-font="jakarta"] body { font-family: var(--font-jakarta), system-ui, sans-serif; }
+html[data-font="outfit"] body { font-family: var(--font-outfit), system-ui, sans-serif; }
+html[data-font="space-grotesk"] body { font-family: var(--font-space-grotesk), system-ui, sans-serif; }
+
+.font-preview-inter { font-family: var(--font-inter), system-ui, sans-serif; }
+.font-preview-dm-sans { font-family: var(--font-dm-sans), system-ui, sans-serif; }
+.font-preview-jakarta { font-family: var(--font-jakarta), system-ui, sans-serif; }
+.font-preview-outfit { font-family: var(--font-outfit), system-ui, sans-serif; }
+.font-preview-space-grotesk { font-family: var(--font-space-grotesk), system-ui, sans-serif; }
+
+::selection {
+  background: rgba(86, 178, 101, 0.2);
+  color: #1a1a1a;
+}
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.08); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0, 0, 0, 0.15); }
+
+
+/* ── Section spacing ─────────────────────── */
+.section-gap { padding-top: 3rem; padding-bottom: 3rem; }
+.section-gap-lg { padding-top: 5rem; padding-bottom: 5rem; }
+
+/* ── Section label ────────────────────────── */
+.section-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--color-mesh-accent);
+  margin-bottom: 1rem;
+}
+.section-label::before {
+  content: '';
+  display: block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-mesh-accent);
+}
+
+/* ── Heading style ────────────────────────── */
+.heading-display {
+  font-size: clamp(2.25rem, 5vw, 3.5rem);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+  color: #1a1a1a;
+  padding-bottom: 0.05em;
+}
+
+/* ── White block card (on off-white bg) ───── */
+.card-block {
+  background: #ffffff;
+  border-radius: 1.5rem;
+  padding: 2.5rem;
+  transition: all 0.2s ease;
+}
+
+/* ── Colored card (Tapdaa pricing style) ──── */
+.card-colored {
+  border-radius: 1.5rem;
+  padding: 2.5rem;
+  border: none;
+  transition: transform 0.2s ease;
+}
+.card-colored:hover {
+  transform: translateY(-2px);
+}
+
+/* ── Legacy card-tapdaa (now white block) ─── */
+.card-tapdaa {
+  background: #ffffff;
+  border: none;
+  border-radius: 1.5rem;
+  padding: 2.5rem;
+  transition: all 0.2s ease;
+}
+.card-tapdaa:hover {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
+}

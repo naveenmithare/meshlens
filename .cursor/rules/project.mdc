@@ -1,0 +1,38 @@
+---
+description: MeshLens project conventions
+globs: ["**/*"]
+---
+
+# MeshLens — Project Rules
+
+## Stack
+- **Framework**: Next.js 16 (App Router, TypeScript, server components by default)
+- **Database**: SQLite via better-sqlite3 (file: db/mesh_metadata.db)
+- **Visualization**: D3.js 7 (force graphs, treemaps, Sankey, stream charts)
+- **Scrollytelling**: Scrollama (IntersectionObserver-based)
+- **Styling**: Tailwind CSS 4 with custom theme tokens (mesh-bg, mesh-accent, domain-*, health-*, tier-*)
+- **Fonts**: Source Serif 4 (body)
+
+## Architecture
+- Server components fetch data directly via `src/lib/queries.ts`
+- Client components receive data as props from server page components
+- API routes exist for client-side fetching when needed
+- SQL migrations in `db/migrations/`, run with `npm run db:migrate`
+- Seed data in `scripts/seed.ts`, run with `npm run db:seed`
+
+## Data Model
+- 6 domains, 50 applications, 50 connections, 15 data products, 20 lineage edges
+- Analytical views (v_mesh_overview, v_domain_health, etc.) power dashboards
+- Fivetran Platform Connector-inspired schema
+
+## Design Principles
+- Pudding.cool visual essay aesthetic: dark background, warm accent, serif typography
+- Transitions: 600-800ms, cubic easing
+- Mobile responsive: stack vertically on narrow screens
+- Minimal dependencies — keep it lean for open-source
+
+## Code Style
+- TypeScript strict mode
+- Server components by default, "use client" only when needed
+- D3 rendering in useEffect hooks, cleanup on unmount
+- Tailwind for layout/spacing, custom CSS only for D3 SVG elements
