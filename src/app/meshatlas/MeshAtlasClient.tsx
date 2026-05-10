@@ -363,7 +363,9 @@ export default function MeshAtlasClient({ graph, overview, domains, apps, produc
   const undoCfg = undoArcCfg;
 
   useEffect(() => {
+    if (!IS_AUTHORING) return;
     document.body.style.background = cfg.bg;
+    document.documentElement.style.setProperty("--nav-bg", cfg.bg);
     try { localStorage.setItem(LS_KEY_GLOBAL_BG, cfg.bg); } catch {}
   }, [cfg.bg]);
 
