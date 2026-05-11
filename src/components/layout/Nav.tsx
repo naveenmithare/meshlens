@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from "react";
 import { IS_AUTHORING } from "@/lib/authoring";
 
 const links = [
@@ -60,7 +60,12 @@ function normalizePathname(pathname: string | null): string {
 
 export default function Nav() {
   const pathname = usePathname();
-  const path = normalizePathname(pathname);
+  const path = useMemo(() => {
+    if (typeof window !== "undefined") {
+      return normalizePathname(window.location.pathname);
+    }
+    return normalizePathname(pathname);
+  }, [pathname]);
   const [showSettings, setShowSettings] = useState(false);
   const [activeFont, setActiveFont] = useState(() => {
     const s = loadSettings();
@@ -140,9 +145,14 @@ export default function Nav() {
                 aria-current={isActive ? "page" : undefined}
                 className={`px-4 py-2 rounded-full text-[14px] font-medium transition-all duration-200 ${
                   isActive
-                    ? "bg-[#1a1a1a] text-white"
+                    ? ""
                     : "text-gray-500 hover:text-mesh-text hover:bg-gray-100/80"
-                }`}>
+                }`}
+                style={
+                  isActive
+                    ? { backgroundColor: "#1a1a1a", color: "#ffffff" }
+                    : undefined
+                }>
                 {link.label}
               </Link>
             );
