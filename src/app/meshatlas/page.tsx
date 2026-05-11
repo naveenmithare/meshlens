@@ -13,7 +13,7 @@ import {
   getRecentSyncLogs,
   getConnectionHealth,
 } from "@/lib/queries";
-import MeshAtlasClient from "./MeshAtlasClient";
+import MeshAtlasLoader from "./MeshAtlasLoader";
 
 export const dynamic = "force-static";
 export const revalidate = 3600;
@@ -34,7 +34,7 @@ export default function MeshAtlasPage() {
   const connectionHealth = getConnectionHealth();
 
   return (
-    <MeshAtlasClient
+    <MeshAtlasLoader
       graph={graph}
       overview={overview}
       domains={domains}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useLayoutEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import type { PlaygroundConfig } from "./types";
 import { DEFAULTS } from "./types";
 
@@ -326,20 +326,17 @@ export function buildRightPanelSyncUpdates(cfg: PlaygroundConfig, source: RightP
   return out;
 }
 
-export function usePlayground(storageKey: string): [PlaygroundConfig, (path: string, value: any) => void, () => void, () => void, boolean, (updates: Record<string, unknown>) => void, boolean] {
+export function usePlayground(storageKey: string): [PlaygroundConfig, (path: string, value: any) => void, () => void, () => void, boolean, (updates: Record<string, unknown>) => void] {
   const [cfg, setCfg] = useState<PlaygroundConfig>(() => loadPlaygroundConfig(storageKey));
   const [canUndo, setCanUndo] = useState(false);
-  const [hydrated, setHydrated] = useState(false);
   const historyRef = useRef<string[]>([]);
   const lastPushRef = useRef(0);
 
-  useLayoutEffect(() => {
-    setCfg(loadPlaygroundConfig(storageKey));
+  useEffect(() => {
     try {
       const raw = localStorage.getItem(storageKey);
       historyRef.current = [raw || JSON.stringify(DEFAULTS)];
     } catch { historyRef.current = [JSON.stringify(DEFAULTS)]; }
-    setHydrated(true);
   }, [storageKey]);
 
   const update = useCallback((path: string, value: any) => {
@@ -412,5 +409,5 @@ export function usePlayground(storageKey: string): [PlaygroundConfig, (path: str
     [storageKey],
   );
 
-  return [cfg, update, reset, undo, canUndo, batchUpdate, hydrated];
+  return [cfg, update, reset, undo, canUndo, batchUpdate];
 }
