@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useLayoutEffect, useCallback } from "react";
 import type { PlaygroundConfig } from "./types";
 import { DEFAULTS } from "./types";
 
@@ -99,6 +99,24 @@ export function loadSavedThemes(): ColorTheme[] {
 
 export function saveThemesToStorage(themes: ColorTheme[]) {
   try { localStorage.setItem(LS_KEY_THEMES, JSON.stringify(themes)); } catch {}
+}
+
+function cloneDefaultConfig(): PlaygroundConfig {
+  return JSON.parse(JSON.stringify(DEFAULTS)) as PlaygroundConfig;
+}
+
+export function loadPlaygroundConfig(storageKey: string): PlaygroundConfig {
+  const base = cloneDefaultConfig();
+  if (typeof window === "undefined") return base;
+  try {
+    const raw = localStorage.getItem(storageKey);
+    const merged = raw ? deepMerge(base, JSON.parse(raw)) : base;
+    migratePlaygroundConfig(merged);
+    const globalBg = localStorage.getItem(LS_KEY_GLOBAL_BG);
+    if (globalBg) merged.bg = globalBg;
+    return merged;
+  } catch {}
+  return base;
 }
 
 function deepMerge(base: any, patch: any): any {
@@ -308,28 +326,20 @@ export function buildRightPanelSyncUpdates(cfg: PlaygroundConfig, source: RightP
   return out;
 }
 
-export function usePlayground(storageKey: string): [PlaygroundConfig, (path: string, value: any) => void, () => void, () => void, boolean, (updates: Record<string, unknown>) => void] {
-  const [cfg, setCfg] = useState<PlaygroundConfig>(() => {
-    if (typeof window === "undefined") return DEFAULTS;
-    try {
-      const raw = localStorage.getItem(storageKey);
-      const merged = raw ? deepMerge(DEFAULTS, JSON.parse(raw)) : { ...DEFAULTS };
-      migratePlaygroundConfig(merged);
-      const globalBg = localStorage.getItem(LS_KEY_GLOBAL_BG);
-      if (globalBg) merged.bg = globalBg;
-      return merged;
-    } catch {}
-    return DEFAULTS;
-  });
+export function usePlayground(storageKey: string): [PlaygroundConfig, (path: string, value: any) => void, () => void, () => void, boolean, (updates: Record<string, unknown>) => void, boolean] {
+  const [cfg, setCfg] = useState<PlaygroundConfig>(() => loadPlaygroundConfig(storageKey));
   const [canUndo, setCanUndo] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
   const historyRef = useRef<string[]>([]);
   const lastPushRef = useRef(0);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    setCfg(loadPlaygroundConfig(storageKey));
     try {
       const raw = localStorage.getItem(storageKey);
       historyRef.current = [raw || JSON.stringify(DEFAULTS)];
     } catch { historyRef.current = [JSON.stringify(DEFAULTS)]; }
+    setHydrated(true);
   }, [storageKey]);
 
   const update = useCallback((path: string, value: any) => {
@@ -402,5 +412,5 @@ export function usePlayground(storageKey: string): [PlaygroundConfig, (path: str
     [storageKey],
   );
 
-  return [cfg, update, reset, undo, canUndo, batchUpdate];
+  return [cfg, update, reset, undo, canUndo, batchUpdate, hydrated];
 }

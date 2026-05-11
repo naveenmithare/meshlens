@@ -30,7 +30,7 @@ export default function RootLayout({
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){var bg="#fffef5",ac="#000000",fn="dm-sans";try{var r=localStorage.getItem("meshlens-settings");if(r){var s=JSON.parse(r);if(s.bg)bg=s.bg;if(s.accent)ac=s.accent;if(s.font)fn=s.font;}}catch(e){}document.documentElement.style.setProperty("--nav-bg",bg);document.body.style.background=bg;document.documentElement.style.setProperty("--color-mesh-accent",ac);document.documentElement.style.setProperty("--color-mesh-accent-dim",ac+"1a");document.documentElement.setAttribute("data-font",fn);})();`,
+            __html: `(function(){var bg="#fffef5",ac="#000000",fn="dm-sans",meshBg="#fffef5";try{var r=localStorage.getItem("meshlens-settings");if(r){var s=JSON.parse(r);if(s.bg)bg=s.bg;if(s.accent)ac=s.accent;if(s.font)fn=s.font;}var mg=localStorage.getItem("meshatlas-global-bg");if(mg)meshBg=mg;else{var arc=localStorage.getItem("meshatlas-pg-arc");if(arc){var pg=JSON.parse(arc);if(pg&&pg.bg)meshBg=pg.bg;}}}catch(e){}document.documentElement.style.setProperty("--nav-bg",bg);document.documentElement.style.setProperty("--meshatlas-boot-bg",meshBg);document.body.style.background=bg;document.documentElement.style.setProperty("--color-mesh-accent",ac);document.documentElement.style.setProperty("--color-mesh-accent-dim",ac+"1a");document.documentElement.setAttribute("data-font",fn);})();`,
           }}
         />
       </head>

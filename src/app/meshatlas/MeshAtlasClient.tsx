@@ -45,6 +45,22 @@ const DQ_LABELS = [
 
 const DOM_GAP = 0.018;
 
+const DEFAULT_FOCUS_TOGGLE_POS = { x: 539.76171875, y: -816.734375 };
+const DEFAULT_ISSUES_TOGGLE_POS = { x: 539.33203125, y: -757.09765625 };
+
+function loadStoredTogglePos(key: string, fallback: { x: number; y: number }) {
+  if (typeof window === "undefined") return fallback;
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed.x === "number" && typeof parsed.y === "number") {
+      return parsed as { x: number; y: number };
+    }
+  } catch {}
+  return fallback;
+}
+
 const PANEL_TABS = [
   { id: "overview", label: "Overview", icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0h4" },
   { id: "cost", label: "Cost", icon: "M12 8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-7 2a7 7 0 1114 0 7 7 0 01-14 0z" },
@@ -351,7 +367,7 @@ function AiMarkdown({ text }: { text: string }) {
    MAIN COMPONENT
    ═══════════════════════════════════════════════════ */
 export default function MeshAtlasClient({ graph, overview, domains, apps, products, execKpis, appProductLinks, pipelineStatus, productPipelineStatus, productPipelineRuns, recentSyncLogs, connectionHealth }: Props) {
-  const [arcCfg, updateArcCfg, resetArcCfg, undoArcCfg, , batchUpdateCfg] = usePlayground(LS_KEY_ARC);
+  const [arcCfg, updateArcCfg, resetArcCfg, undoArcCfg, , batchUpdateCfg, playgroundReady] = usePlayground(LS_KEY_ARC);
 
   const cfg = useMemo<PlaygroundConfig>(() => ({
     ...arcCfg,
@@ -363,12 +379,13 @@ export default function MeshAtlasClient({ graph, overview, domains, apps, produc
   const undoCfg = undoArcCfg;
 
   useLayoutEffect(() => {
+    if (!playgroundReady) return;
     document.body.style.background = cfg.bg;
     document.documentElement.style.setProperty("--nav-bg", cfg.bg);
     if (IS_AUTHORING) {
       try { localStorage.setItem(LS_KEY_GLOBAL_BG, cfg.bg); } catch {}
     }
-  }, [cfg.bg]);
+  }, [cfg.bg, playgroundReady]);
 
   const DESIGN_WIDTH = 1728;
   const DESIGN_HEIGHT = Math.max(cfg.vh + 40, 840);
@@ -528,18 +545,24 @@ export default function MeshAtlasClient({ graph, overview, domains, apps, produc
   const [pipeLineageFocusId, setPipeLineageFocusId] = useState<string | null>(null);
   const [qualitySearch, setQualitySearch] = useState("");
   const [showUpDown, setShowUpDown] = useState(true);
-  const [focusTogglePos, setFocusTogglePos] = useState<{ x: number; y: number }>(() => {
-    if (typeof window !== "undefined") { try { const s = localStorage.getItem("meshlens-focus-pos"); if (s) return JSON.parse(s); } catch {} }
-    return { x: 539.76171875, y: -816.734375 };
-  });
-  useEffect(() => { try { localStorage.setItem("meshlens-focus-pos", JSON.stringify(focusTogglePos)); } catch {} }, [focusTogglePos]);
+  const [focusTogglePos, setFocusTogglePos] = useState<{ x: number; y: number }>(DEFAULT_FOCUS_TOGGLE_POS);
+  const [toggleBarsReady, setToggleBarsReady] = useState(false);
+  useLayoutEffect(() => {
+    setFocusTogglePos(loadStoredTogglePos("meshlens-focus-pos", DEFAULT_FOCUS_TOGGLE_POS));
+    setIssuesTogglePos(loadStoredTogglePos("meshlens-issues-pos", DEFAULT_ISSUES_TOGGLE_POS));
+    setToggleBarsReady(true);
+  }, []);
+  useEffect(() => {
+    if (!toggleBarsReady) return;
+    try { localStorage.setItem("meshlens-focus-pos", JSON.stringify(focusTogglePos)); } catch {}
+  }, [focusTogglePos, toggleBarsReady]);
   const focusToggleDrag = useRef<{ sx: number; sy: number; ox: number; oy: number } | null>(null);
   const [highlightIssues, setHighlightIssues] = useState(false);
-  const [issuesTogglePos, setIssuesTogglePos] = useState<{ x: number; y: number }>(() => {
-    if (typeof window !== "undefined") { try { const s = localStorage.getItem("meshlens-issues-pos"); if (s) return JSON.parse(s); } catch {} }
-    return { x: 539.33203125, y: -757.09765625 };
-  });
-  useEffect(() => { try { localStorage.setItem("meshlens-issues-pos", JSON.stringify(issuesTogglePos)); } catch {} }, [issuesTogglePos]);
+  const [issuesTogglePos, setIssuesTogglePos] = useState<{ x: number; y: number }>(DEFAULT_ISSUES_TOGGLE_POS);
+  useEffect(() => {
+    if (!toggleBarsReady) return;
+    try { localStorage.setItem("meshlens-issues-pos", JSON.stringify(issuesTogglePos)); } catch {}
+  }, [issuesTogglePos, toggleBarsReady]);
   const issuesToggleDrag = useRef<{ sx: number; sy: number; ox: number; oy: number } | null>(null);
   const [appViewMode, setAppViewMode] = useState<"apps" | "source" | "business" | "consumer">("apps");
   const [pgPos, setPgPos] = useState<{ x: number; y: number } | null>(null);
@@ -1483,6 +1506,15 @@ export default function MeshAtlasClient({ graph, overview, domains, apps, produc
   }, [pNodes, cfg.show.productLabels, cfg.show.smartLabels, cfg.prodLabel, cfg.cy, cfg.cx, cfg.radii]);
 
   const bdr = cfg.paneBorder;
+  const meshAtlasReady = playgroundReady && toggleBarsReady;
+
+  if (!meshAtlasReady) {
+    return (
+      <div style={{ background: "var(--meshatlas-boot-bg, #fffef5)", minHeight: "100dvh" }}>
+        <div style={{ height: "100dvh" }} />
+      </div>
+    );
+  }
 
   return (
     <div style={{ background: cfg.bg }}>
