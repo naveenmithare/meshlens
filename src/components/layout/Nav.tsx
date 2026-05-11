@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
 import { IS_AUTHORING } from "@/lib/authoring";
 
 const links = [
@@ -60,12 +60,27 @@ function normalizePathname(pathname: string | null): string {
 
 export default function Nav() {
   const pathname = usePathname();
-  const path = useMemo(() => {
-    if (typeof window !== "undefined") {
-      return normalizePathname(window.location.pathname);
+  const normalizedPath = normalizePathname(pathname);
+  /** Keeps tab highlight in sync with navigation before usePathname() commits (App Router can lag one frame). */
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
+
+  useLayoutEffect(() => {
+    if (!pendingHref) return;
+    if (normalizedPath === normalizePathname(pendingHref)) {
+      setPendingHref(null);
     }
-    return normalizePathname(pathname);
-  }, [pathname]);
+  }, [pathname, pendingHref, normalizedPath]);
+
+  useEffect(() => {
+    function onPopState() {
+      setPendingHref(null);
+    }
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
+  const path = pendingHref ? normalizePathname(pendingHref) : normalizedPath;
+
   const [showSettings, setShowSettings] = useState(false);
   const [activeFont, setActiveFont] = useState(() => {
     const s = loadSettings();
@@ -143,10 +158,15 @@ export default function Nav() {
             return (
               <Link key={link.href} href={link.href}
                 aria-current={isActive ? "page" : undefined}
-                className={`px-4 py-2 rounded-full text-[14px] font-medium transition-all duration-200 ${
+                prefetch
+                onClick={(e) => {
+                  if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+                  setPendingHref(link.href);
+                }}
+                className={`px-4 py-2 rounded-full text-[14px] font-medium ${
                   isActive
                     ? ""
-                    : "text-gray-500 hover:text-mesh-text hover:bg-gray-100/80"
+                    : "text-gray-500 hover:text-mesh-text hover:bg-gray-100/80 transition-colors duration-100"
                 }`}
                 style={
                   isActive
