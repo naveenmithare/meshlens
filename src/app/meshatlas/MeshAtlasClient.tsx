@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef, useEffect, useCallback, type ReactNode } from "react";
+import { useState, useMemo, useRef, useEffect, useLayoutEffect, useCallback, type ReactNode } from "react";
 import type { PlaygroundConfig } from "./playground/types";
 import { APP_CATEGORIES, DEFAULTS } from "./playground/types";
 import { usePlayground, type ColorTheme, loadSavedThemes, saveThemesToStorage, CLASSIC_THEME, applyThemeColors, extractColorsFromCfg, extractRightPanelSyncSnapshot, rightPanelSyncPathsForTarget, buildRightPanelSyncUpdates, LS_KEY_ARC, LS_KEY_GLOBAL_BG, LS_KEY_ACTIVE_THEME } from "./playground/usePlayground";
@@ -45,6 +45,21 @@ const DQ_LABELS = [
 
 const DOM_GAP = 0.018;
 
+const DEFAULT_FOCUS_TOGGLE_POS = { x: 539.76171875, y: -816.734375 };
+const DEFAULT_ISSUES_TOGGLE_POS = { x: 539.33203125, y: -757.09765625 };
+
+function loadStoredTogglePos(key: string, fallback: { x: number; y: number }) {
+  if (typeof window === "undefined") return fallback;
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed.x === "number" && typeof parsed.y === "number") {
+      return parsed as { x: number; y: number };
+    }
+  } catch {}
+  return fallback;
+}
 
 const PANEL_TABS = [
   { id: "overview", label: "Overview", icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0h4" },
@@ -363,12 +378,23 @@ export default function MeshAtlasClient({ graph, overview, domains, apps, produc
   const resetCfg = resetArcCfg;
   const undoCfg = undoArcCfg;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    if (!IS_AUTHORING) return;
     document.body.style.background = cfg.bg;
     document.documentElement.style.setProperty("--nav-bg", cfg.bg);
-    if (IS_AUTHORING) {
-      try { localStorage.setItem(LS_KEY_GLOBAL_BG, cfg.bg); } catch {}
-    }
+    try { localStorage.setItem(LS_KEY_GLOBAL_BG, cfg.bg); } catch {}
+    return () => {
+      try {
+        const raw = localStorage.getItem("meshlens-settings");
+        const bg = raw ? (JSON.parse(raw) as { bg?: string }).bg : undefined;
+        const next = bg && /^#[0-9a-fA-F]{6}$/.test(bg) ? bg : "#fffef5";
+        document.body.style.background = next;
+        document.documentElement.style.setProperty("--nav-bg", next);
+      } catch {
+        document.body.style.background = "#fffef5";
+        document.documentElement.style.setProperty("--nav-bg", "#fffef5");
+      }
+    };
   }, [cfg.bg]);
 
   const DESIGN_WIDTH = 1728;
@@ -376,11 +402,8 @@ export default function MeshAtlasClient({ graph, overview, domains, apps, produc
   const NAV_HEIGHT = 64;
   const VIEWPORT_MARGIN = 4;
   const MAX_EFFECTIVE_STAGE_SCALE = 1.5;
-  const [viewportSize, setViewportSize] = useState(() => ({
-    w: Math.round(window.visualViewport?.width ?? window.innerWidth),
-    h: Math.round(window.visualViewport?.height ?? window.innerHeight),
-  }));
-  useEffect(() => {
+  const [viewportSize, setViewportSize] = useState({ w: DESIGN_WIDTH, h: DESIGN_HEIGHT + NAV_HEIGHT });
+  useLayoutEffect(() => {
     const calc = () => {
       const vv = window.visualViewport;
       setViewportSize({
@@ -532,18 +555,22 @@ export default function MeshAtlasClient({ graph, overview, domains, apps, produc
   const [pipeLineageFocusId, setPipeLineageFocusId] = useState<string | null>(null);
   const [qualitySearch, setQualitySearch] = useState("");
   const [showUpDown, setShowUpDown] = useState(true);
-  const [focusTogglePos, setFocusTogglePos] = useState<{ x: number; y: number }>(() => {
-    try { const s = localStorage.getItem("meshlens-focus-pos"); if (s) return JSON.parse(s); } catch {}
-    return { x: 539.76171875, y: -816.734375 };
-  });
-  useEffect(() => { try { localStorage.setItem("meshlens-focus-pos", JSON.stringify(focusTogglePos)); } catch {} }, [focusTogglePos]);
+  const [focusTogglePos, setFocusTogglePos] = useState<{ x: number; y: number }>(() =>
+    IS_AUTHORING ? loadStoredTogglePos("meshlens-focus-pos", DEFAULT_FOCUS_TOGGLE_POS) : DEFAULT_FOCUS_TOGGLE_POS,
+  );
+  useEffect(() => {
+    if (!IS_AUTHORING) return;
+    try { localStorage.setItem("meshlens-focus-pos", JSON.stringify(focusTogglePos)); } catch {}
+  }, [focusTogglePos]);
   const focusToggleDrag = useRef<{ sx: number; sy: number; ox: number; oy: number } | null>(null);
   const [highlightIssues, setHighlightIssues] = useState(false);
-  const [issuesTogglePos, setIssuesTogglePos] = useState<{ x: number; y: number }>(() => {
-    try { const s = localStorage.getItem("meshlens-issues-pos"); if (s) return JSON.parse(s); } catch {}
-    return { x: 539.33203125, y: -757.09765625 };
-  });
-  useEffect(() => { try { localStorage.setItem("meshlens-issues-pos", JSON.stringify(issuesTogglePos)); } catch {} }, [issuesTogglePos]);
+  const [issuesTogglePos, setIssuesTogglePos] = useState<{ x: number; y: number }>(() =>
+    IS_AUTHORING ? loadStoredTogglePos("meshlens-issues-pos", DEFAULT_ISSUES_TOGGLE_POS) : DEFAULT_ISSUES_TOGGLE_POS,
+  );
+  useEffect(() => {
+    if (!IS_AUTHORING) return;
+    try { localStorage.setItem("meshlens-issues-pos", JSON.stringify(issuesTogglePos)); } catch {}
+  }, [issuesTogglePos]);
   const issuesToggleDrag = useRef<{ sx: number; sy: number; ox: number; oy: number } | null>(null);
   const [appViewMode, setAppViewMode] = useState<"apps" | "source" | "business" | "consumer">("apps");
   const [pgPos, setPgPos] = useState<{ x: number; y: number } | null>(null);

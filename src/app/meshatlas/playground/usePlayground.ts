@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useLayoutEffect, useCallback } from "react";
 import type { PlaygroundConfig } from "./types";
 import { DEFAULTS } from "./types";
+import { IS_AUTHORING } from "@/lib/authoring";
 
 export const LS_KEY_ARC = "meshatlas-pg-arc";
 export const LS_KEY_GLOBAL_BG = "meshatlas-global-bg";
@@ -107,6 +108,7 @@ function cloneDefaultConfig(): PlaygroundConfig {
 
 export function loadPlaygroundConfig(storageKey: string): PlaygroundConfig {
   const base = cloneDefaultConfig();
+  if (!IS_AUTHORING) return base;
   if (typeof window === "undefined") return base;
   try {
     const raw = localStorage.getItem(storageKey);
@@ -332,14 +334,21 @@ export function usePlayground(storageKey: string): [PlaygroundConfig, (path: str
   const historyRef = useRef<string[]>([]);
   const lastPushRef = useRef(0);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    if (!IS_AUTHORING) {
+      setCfg(cloneDefaultConfig());
+      historyRef.current = [JSON.stringify(cloneDefaultConfig())];
+      return;
+    }
+    setCfg(loadPlaygroundConfig(storageKey));
     try {
       const raw = localStorage.getItem(storageKey);
-      historyRef.current = [raw || JSON.stringify(DEFAULTS)];
-    } catch { historyRef.current = [JSON.stringify(DEFAULTS)]; }
+      historyRef.current = [raw || JSON.stringify(cloneDefaultConfig())];
+    } catch { historyRef.current = [JSON.stringify(cloneDefaultConfig())]; }
   }, [storageKey]);
 
   const update = useCallback((path: string, value: any) => {
+    if (!IS_AUTHORING) return;
     setCfg(prev => {
       const now = Date.now();
       if (now - lastPushRef.current > 600) {
@@ -363,9 +372,10 @@ export function usePlayground(storageKey: string): [PlaygroundConfig, (path: str
   }, [storageKey]);
 
   const undo = useCallback(() => {
+    if (!IS_AUTHORING) return;
     if (historyRef.current.length <= 0) return;
     const prev = historyRef.current.pop()!;
-    const restored = deepMerge(DEFAULTS, JSON.parse(prev));
+    const restored = deepMerge(cloneDefaultConfig(), JSON.parse(prev));
     migratePlaygroundConfig(restored);
     setCfg(restored);
     setCanUndo(historyRef.current.length > 0);
@@ -373,14 +383,16 @@ export function usePlayground(storageKey: string): [PlaygroundConfig, (path: str
   }, [storageKey]);
 
   const reset = useCallback(() => {
+    if (!IS_AUTHORING) return;
     historyRef.current.push(JSON.stringify(cfg));
     setCanUndo(true);
     localStorage.removeItem(storageKey);
-    setCfg(DEFAULTS);
+    setCfg(cloneDefaultConfig());
   }, [storageKey, cfg]);
 
   const batchUpdate = useCallback(
     (updates: Record<string, unknown>) => {
+      if (!IS_AUTHORING) return;
       const paths = Object.keys(updates);
       if (paths.length === 0) return;
       setCfg(prev => {

@@ -51,8 +51,16 @@ function saveSettings(s: SavedSettings) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); } catch { /* ignore */ }
 }
 
+function normalizePathname(pathname: string | null): string {
+  if (!pathname) return "/";
+  const noQuery = pathname.split("?")[0]?.split("#")[0] ?? pathname;
+  if (noQuery === "" || noQuery === "/") return "/";
+  return noQuery.endsWith("/") ? noQuery.slice(0, -1) || "/" : noQuery;
+}
+
 export default function Nav() {
   const pathname = usePathname();
+  const path = normalizePathname(pathname);
   const [showSettings, setShowSettings] = useState(false);
   const [activeFont, setActiveFont] = useState(() => {
     const s = loadSettings();
@@ -123,12 +131,16 @@ export default function Nav() {
 
         <div className="flex items-center gap-0.5">
           {links.map((link) => {
-            const isActive = link.href === "/" ? pathname === "/" : pathname.startsWith(link.href);
+            const isActive =
+              link.href === "/"
+                ? path === "/"
+                : path === link.href || path.startsWith(`${link.href}/`);
             return (
               <Link key={link.href} href={link.href}
+                aria-current={isActive ? "page" : undefined}
                 className={`px-4 py-2 rounded-full text-[14px] font-medium transition-all duration-200 ${
                   isActive
-                    ? "bg-mesh-text text-white"
+                    ? "bg-[#1a1a1a] text-white"
                     : "text-gray-500 hover:text-mesh-text hover:bg-gray-100/80"
                 }`}>
                 {link.label}
