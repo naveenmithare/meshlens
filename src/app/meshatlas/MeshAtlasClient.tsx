@@ -45,8 +45,10 @@ const DQ_LABELS = [
 
 const DOM_GAP = 0.018;
 
-const DEFAULT_FOCUS_TOGGLE_POS = { x: 539.76171875, y: -816.734375 };
-const DEFAULT_ISSUES_TOGGLE_POS = { x: 539.33203125, y: -757.09765625 };
+const DEFAULT_FOCUS_TOGGLE_POS = { x: 540.78515625, y: -781.2578125 };
+const DEFAULT_ISSUES_TOGGLE_POS = { x: 541.12890625, y: -736.64453125 };
+const DEFAULT_HOW_TO_USE_POS = { x: 541.06640625, y: -827.453125 };
+const DEFAULT_SEL_LABEL_POS = { x: 630.34765625, y: -119.3359375 };
 
 function loadStoredTogglePos(key: string, fallback: { x: number; y: number }) {
   if (typeof window === "undefined") return fallback;
@@ -572,6 +574,23 @@ export default function MeshAtlasClient({ graph, overview, domains, apps, produc
     try { localStorage.setItem("meshlens-issues-pos", JSON.stringify(issuesTogglePos)); } catch {}
   }, [issuesTogglePos]);
   const issuesToggleDrag = useRef<{ sx: number; sy: number; ox: number; oy: number } | null>(null);
+  const [showHowToUse, setShowHowToUse] = useState(false);
+  const [howToUsePos, setHowToUsePos] = useState<{ x: number; y: number }>(() =>
+    IS_AUTHORING ? loadStoredTogglePos("meshlens-howto-pos", DEFAULT_HOW_TO_USE_POS) : DEFAULT_HOW_TO_USE_POS,
+  );
+  useEffect(() => {
+    if (!IS_AUTHORING) return;
+    try { localStorage.setItem("meshlens-howto-pos", JSON.stringify(howToUsePos)); } catch {}
+  }, [howToUsePos]);
+  const howToUseDrag = useRef<{ sx: number; sy: number; ox: number; oy: number } | null>(null);
+  const [selLabelPos, setSelLabelPos] = useState<{ x: number; y: number }>(() =>
+    IS_AUTHORING ? loadStoredTogglePos("meshlens-sellabel-pos", DEFAULT_SEL_LABEL_POS) : DEFAULT_SEL_LABEL_POS,
+  );
+  useEffect(() => {
+    if (!IS_AUTHORING) return;
+    try { localStorage.setItem("meshlens-sellabel-pos", JSON.stringify(selLabelPos)); } catch {}
+  }, [selLabelPos]);
+  const selLabelDrag = useRef<{ sx: number; sy: number; ox: number; oy: number } | null>(null);
   const [appViewMode, setAppViewMode] = useState<"apps" | "source" | "business" | "consumer">("apps");
   const [pgPos, setPgPos] = useState<{ x: number; y: number } | null>(null);
   const pgDrag = useRef<{ ox: number; oy: number; sx: number; sy: number } | null>(null);
@@ -2118,18 +2137,18 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
                 <text x={0} y={0} fill={lc(lu.anatomyTitleColor)} fontSize={lu.anatomyTitleSize * sc} fontWeight={600} opacity={lu.anatomyTitleOpacity} letterSpacing="0.12em" style={{ cursor: "text" }}
                   onDoubleClick={e => { e.stopPropagation(); const r2 = (e.target as SVGTextElement).getBoundingClientRect(); setEditingLegendText({ cfgPath: "legendText.productLayersTitle", x: r2.left, y: r2.top, value: cfg.legendText.productLayersTitle, width: r2.width + 20 }); }}>{cfg.legendText.productLayersTitle}</text>
                 <line x1={0} x2={140 * sc} y1={5 * sc} y2={5 * sc} stroke={cfg.text} strokeWidth={0.3} opacity={lu.anatomyDividerOpacity} />
-                {ANATOMY_LAYERS.map((layer, i) => {
+                {(() => { const maxOR = Math.max(...ANATOMY_LAYERS.map(l => l.outerR * sc * 0.6)); return ANATOMY_LAYERS.map((layer, i) => {
                   const ty = 12 * sc + i * rowH;
                   const outerR = layer.outerR * sc * 0.6;
                   const innerR = layer.dotR * sc * 0.55;
-                  return (<g key={layer.key} transform={`translate(${outerR + 2},${ty})`}>
+                  return (<g key={layer.key} transform={`translate(${maxOR + 2},${ty})`}>
                     <circle r={outerR} fill={layer.color} fillOpacity={0.12} stroke={layer.color} strokeWidth={0.8 * sc} strokeOpacity={0.3} />
                     <circle r={innerR} fill={layer.color} fillOpacity={0.65} />
                     <line x1={outerR + 3} x2={outerR + 14 * sc} y1={0} y2={0} stroke={cfg.text} strokeWidth={0.3} opacity={0.15} />
                     <text x={outerR + 16 * sc} y={2} fill={lc(lu.anatomyRowTitleColor)} fontSize={lu.anatomyRowTitleSize * sc} fontWeight={500} opacity={lu.anatomyRowTitleOpacity} style={{ cursor: "text" }}
                       onDoubleClick={e => { e.stopPropagation(); const r2 = (e.target as SVGTextElement).getBoundingClientRect(); setEditingLegendText({ cfgPath: `legendText.anatomyRows.${layer.key}.label`, x: r2.left, y: r2.top, value: layer.label, width: r2.width + 20 }); }}>{layer.label}</text>
                   </g>);
-                })}
+                }); })()}
               </g>);
             })()}
 
@@ -2201,12 +2220,13 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
           {/* Focus Mode & Pipeline Issues toggle bars — shared styling from cfg.toggleBars */}
           {(() => {
             const tb = cfg.toggleBars;
-            const barStyle: React.CSSProperties = { minWidth: tb.minWidth, background: tb.bg, border: `1px solid ${tb.borderColor}`, borderRadius: tb.borderRadius, boxShadow: tb.shadow ? "0 1px 6px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.04)" : "none" };
+            const barPadL = 12;
+            const barStyle: React.CSSProperties = { background: tb.bg, border: `1px solid ${tb.borderColor}`, borderRadius: tb.borderRadius, boxShadow: tb.shadow ? "0 1px 6px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.04)" : "none" };
             return (<>
               <div className="absolute flex items-center select-none group/focus z-[50] hover:z-[200]"
                 style={{ ...barStyle, left: focusTogglePos.x, bottom: -focusTogglePos.y }}
                 onClick={e => e.stopPropagation()}>
-                <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 opacity-0 group-hover/focus:opacity-100 transition-opacity duration-150 delay-100 whitespace-nowrap z-[9999]">
+                <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-1.5 opacity-0 group-hover/focus:opacity-100 transition-opacity duration-150 delay-100 whitespace-nowrap z-[9999]">
                   <div className="bg-gray-900 text-white text-[9px] px-2.5 py-1.5 rounded-lg shadow-lg max-w-[220px] whitespace-normal text-center leading-tight">Show only direct upstream &amp; downstream connections, hiding the full transitive lineage chain</div>
                 </div>
                 {IS_AUTHORING && <div className="shrink-0 flex items-center justify-center rounded-l-full px-1.5 py-2 touch-none"
@@ -2216,10 +2236,10 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
                   onPointerUp={e => { focusToggleDrag.current = null; (e.target as HTMLElement).releasePointerCapture(e.pointerId); }}>
                   <svg className="opacity-30" width="5" height="10" viewBox="0 0 5 10"><circle cx="1" cy="1.5" r="0.9" fill="#666" /><circle cx="4" cy="1.5" r="0.9" fill="#666" /><circle cx="1" cy="5" r="0.9" fill="#666" /><circle cx="4" cy="5" r="0.9" fill="#666" /><circle cx="1" cy="8.5" r="0.9" fill="#666" /><circle cx="4" cy="8.5" r="0.9" fill="#666" /></svg>
                 </div>}
-                <div className="flex items-center gap-2 pr-3 py-1.5" style={{ cursor: "default" }}>
-                  <svg width={tb.iconSize} height={tb.iconSize} viewBox="0 0 24 24" fill="none" stroke={showUpDown ? (selProduct ? cfg.layerColors[selProduct.product_type] : selApp ? cfg.layerColors.APPS : tb.activeColor) : tb.inactiveColor} strokeWidth="2" strokeLinecap="round"><path d="M8 6l4-4 4 4M8 18l4 4 4-4M12 2v20" /></svg>
-                  <span className="font-semibold whitespace-nowrap" style={{ fontSize: tb.fontSize, color: showUpDown ? tb.activeColor : tb.inactiveColor }}>Lineage Focus Mode</span>
-                  <button onClick={() => setShowUpDown(!showUpDown)} className={`w-7 h-[16px] rounded-full cursor-pointer transition-colors relative ${showUpDown ? "bg-gray-800" : "bg-gray-200"}`}>
+                <div className="flex items-center py-1.5" style={{ cursor: "default", paddingLeft: barPadL, paddingRight: 12, minWidth: tb.minWidth }}>
+                  <svg className="shrink-0" width={tb.iconSize} height={tb.iconSize} viewBox="0 0 24 24" fill="none" stroke={showUpDown ? (selProduct ? cfg.layerColors[selProduct.product_type] : selApp ? cfg.layerColors.APPS : tb.activeColor) : tb.inactiveColor} strokeWidth="2" strokeLinecap="round"><path d="M8 6l4-4 4 4M8 18l4 4 4-4M12 2v20" /></svg>
+                  <span className="font-semibold whitespace-nowrap flex-1 ml-2 text-left" style={{ fontSize: tb.fontSize, color: showUpDown ? tb.activeColor : tb.inactiveColor }}>Lineage Focus Mode</span>
+                  <button onClick={() => setShowUpDown(!showUpDown)} className={`shrink-0 w-7 h-[16px] rounded-full cursor-pointer transition-colors relative ${showUpDown ? "bg-gray-800" : "bg-gray-200"}`}>
                     <span className={`absolute top-[2px] w-[12px] h-[12px] rounded-full bg-white shadow transition-transform ${showUpDown ? "left-[13px]" : "left-[2px]"}`} />
                   </button>
                 </div>
@@ -2228,7 +2248,7 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
               <div className="absolute flex items-center select-none group/issues z-[50] hover:z-[200]"
                 style={{ ...barStyle, left: issuesTogglePos.x, bottom: -issuesTogglePos.y }}
                 onClick={e => e.stopPropagation()}>
-                <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 opacity-0 group-hover/issues:opacity-100 transition-opacity duration-150 delay-100 whitespace-nowrap z-[9999]">
+                <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-1.5 opacity-0 group-hover/issues:opacity-100 transition-opacity duration-150 delay-100 whitespace-nowrap z-[9999]">
                   <div className="bg-gray-900 text-white text-[9px] px-2.5 py-1.5 rounded-lg shadow-lg max-w-[220px] whitespace-normal text-center leading-tight">Dim healthy flows and visually emphasize broken &amp; warning pipelines</div>
                 </div>
                 {IS_AUTHORING && <div className="shrink-0 flex items-center justify-center rounded-l-full px-1.5 py-2 touch-none"
@@ -2238,15 +2258,113 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
                   onPointerUp={e => { issuesToggleDrag.current = null; (e.target as HTMLElement).releasePointerCapture(e.pointerId); }}>
                   <svg className="opacity-30" width="5" height="10" viewBox="0 0 5 10"><circle cx="1" cy="1.5" r="0.9" fill="#666" /><circle cx="4" cy="1.5" r="0.9" fill="#666" /><circle cx="1" cy="5" r="0.9" fill="#666" /><circle cx="4" cy="5" r="0.9" fill="#666" /><circle cx="1" cy="8.5" r="0.9" fill="#666" /><circle cx="4" cy="8.5" r="0.9" fill="#666" /></svg>
                 </div>}
-                <div className="flex items-center gap-2 pr-3 py-1.5" style={{ cursor: "default" }}>
-                  <svg width={tb.iconSize} height={tb.iconSize} viewBox="0 0 24 24" fill="none" stroke={highlightIssues ? cfg.red : tb.inactiveColor} strokeWidth="2" strokeLinecap="round"><path d="M12 9v2m0 4h.01M5.07 19h13.86c1.33 0 2.17-1.44 1.5-2.59L13.5 4.02a1.73 1.73 0 00-3 0L3.57 16.41C2.9 17.56 3.74 19 5.07 19z" /></svg>
-                  <span className="font-semibold whitespace-nowrap" style={{ fontSize: tb.fontSize, color: highlightIssues ? tb.activeColor : tb.inactiveColor }}>Highlight Pipeline Issues</span>
-                  <button onClick={() => setHighlightIssues(!highlightIssues)} className={`w-7 h-[16px] rounded-full cursor-pointer transition-colors relative ${highlightIssues ? "bg-gray-800" : "bg-gray-200"}`}>
+                <div className="flex items-center py-1.5" style={{ cursor: "default", paddingLeft: barPadL, paddingRight: 12, minWidth: tb.minWidth }}>
+                  <svg className="shrink-0" width={tb.iconSize} height={tb.iconSize} viewBox="0 0 24 24" fill="none" stroke={highlightIssues ? cfg.red : tb.inactiveColor} strokeWidth="2" strokeLinecap="round"><path d="M12 9v2m0 4h.01M5.07 19h13.86c1.33 0 2.17-1.44 1.5-2.59L13.5 4.02a1.73 1.73 0 00-3 0L3.57 16.41C2.9 17.56 3.74 19 5.07 19z" /></svg>
+                  <span className="font-semibold whitespace-nowrap flex-1 ml-2 text-left" style={{ fontSize: tb.fontSize, color: highlightIssues ? tb.activeColor : tb.inactiveColor }}>Highlight Issues</span>
+                  <button onClick={() => setHighlightIssues(!highlightIssues)} className={`shrink-0 w-7 h-[16px] rounded-full cursor-pointer transition-colors relative ${highlightIssues ? "bg-gray-800" : "bg-gray-200"}`}>
                     <span className={`absolute top-[2px] w-[12px] h-[12px] rounded-full bg-white shadow transition-transform ${highlightIssues ? "left-[13px]" : "left-[2px]"}`} />
                   </button>
                 </div>
               </div>
             </>);
+          })()}
+
+          {/* ── How to Use — draggable, same style as toggle bars ── */}
+          {(() => {
+            const tb = cfg.toggleBars;
+            const htuBarStyle: React.CSSProperties = { background: tb.bg, border: `1px solid ${tb.borderColor}`, borderRadius: tb.borderRadius, boxShadow: tb.shadow ? "0 1px 6px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.04)" : "none" };
+            return (
+          <div className="absolute select-none z-[52] hover:z-[210] group/howto"
+            style={{ left: howToUsePos.x, bottom: -howToUsePos.y }}
+            onClick={e => e.stopPropagation()}>
+            <button className="flex items-center cursor-pointer" style={htuBarStyle}
+              onClick={() => setShowHowToUse(v => !v)}>
+              {IS_AUTHORING && <div className="shrink-0 flex items-center justify-center rounded-l-full px-1.5 py-2 touch-none"
+                style={{ cursor: howToUseDrag.current ? "grabbing" : "grab" }}
+                onPointerDown={e => { e.stopPropagation(); (e.target as HTMLElement).setPointerCapture(e.pointerId); howToUseDrag.current = { sx: e.clientX, sy: e.clientY, ox: howToUsePos.x, oy: howToUsePos.y }; }}
+                onPointerMove={e => { if (!howToUseDrag.current) return; setHowToUsePos({ x: howToUseDrag.current.ox + (e.clientX - howToUseDrag.current.sx), y: howToUseDrag.current.oy - (e.clientY - howToUseDrag.current.sy) }); }}
+                onPointerUp={e => { howToUseDrag.current = null; (e.target as HTMLElement).releasePointerCapture(e.pointerId); }}>
+                <svg className="opacity-30" width="5" height="10" viewBox="0 0 5 10"><circle cx="1" cy="1.5" r="0.9" fill="#666" /><circle cx="4" cy="1.5" r="0.9" fill="#666" /><circle cx="1" cy="5" r="0.9" fill="#666" /><circle cx="4" cy="5" r="0.9" fill="#666" /><circle cx="1" cy="8.5" r="0.9" fill="#666" /><circle cx="4" cy="8.5" r="0.9" fill="#666" /></svg>
+              </div>}
+              <div className="flex items-center py-1.5" style={{ paddingLeft: 12, paddingRight: 10, minWidth: tb.minWidth }}>
+                <svg className="shrink-0" width={tb.iconSize} height={tb.iconSize} viewBox="0 0 24 24" fill="none" stroke={tb.activeColor} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3M12 17h.01" /></svg>
+                <span className="font-semibold whitespace-nowrap flex-1 ml-2 text-left" style={{ fontSize: tb.fontSize, color: tb.activeColor }}>How to Use</span>
+                <svg className="shrink-0 transition-transform duration-200 ease-out ml-1" width={tb.iconSize} height={tb.iconSize} viewBox="0 0 24 24" fill="none" stroke={tb.activeColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: showHowToUse ? "rotate(180deg)" : "rotate(0deg)", opacity: 0.6 }}><path d="M6 9l6 6 6-6" /></svg>
+              </div>
+            </button>
+            {showHowToUse && (
+              <div className="absolute left-0 top-full mt-2 rounded-xl shadow-lg border border-gray-200/80 overflow-hidden z-[300]" style={{ background: "rgba(255,255,255,0.96)", backdropFilter: "blur(14px)", width: 270 }}>
+                <div className="px-4 py-3 space-y-3 text-[10px] text-gray-600 leading-[1.7]">
+                  <div className="flex gap-2.5 items-start">
+                    <span className="shrink-0 w-[18px] h-[18px] rounded-full bg-gray-100 flex items-center justify-center mt-0.5"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg></span>
+                    <span><strong className="text-gray-800">Search</strong> — type a product name to jump directly and center your view.</span>
+                  </div>
+                  <div className="flex gap-2.5 items-start">
+                    <span className="shrink-0 w-[18px] h-[18px] rounded-full bg-gray-100 flex items-center justify-center mt-0.5"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2.5"><path d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5"/></svg></span>
+                    <span><strong className="text-gray-800">Click nodes</strong> — select any product or app to see details in the right panel.</span>
+                  </div>
+                  <div className="flex gap-2.5 items-start">
+                    <span className="shrink-0 w-[18px] h-[18px] rounded-full bg-gray-100 flex items-center justify-center mt-0.5"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2.5"><path d="M8 6l4-4 4 4M8 18l4 4 4-4M12 2v20"/></svg></span>
+                    <span><strong className="text-gray-800">Focus Mode</strong> — isolate direct upstream &amp; downstream connections.</span>
+                  </div>
+                  <div className="flex gap-2.5 items-start">
+                    <span className="shrink-0 w-[18px] h-[18px] rounded-full bg-gray-100 flex items-center justify-center mt-0.5"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2.5"><path d="M12 9v2m0 4h.01M5.07 19h13.86c1.33 0 2.17-1.44 1.5-2.59L13.5 4.02a1.73 1.73 0 00-3 0L3.57 16.41C2.9 17.56 3.74 19 5.07 19z"/></svg></span>
+                    <span><strong className="text-gray-800">Highlight Issues</strong> — dim healthy flows and emphasize broken/warning pipelines.</span>
+                  </div>
+                  <div className="flex gap-2.5 items-start">
+                    <span className="shrink-0 w-[18px] h-[18px] rounded-full bg-gray-100 flex items-center justify-center mt-0.5"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></span>
+                    <span><strong className="text-gray-800">Ask Atlas</strong> — AI-powered insights about any product, domain, or lineage.</span>
+                  </div>
+                  <div className="flex gap-2.5 items-start">
+                    <span className="shrink-0 w-[18px] h-[18px] rounded-full bg-gray-100 flex items-center justify-center mt-0.5"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2.5"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></span>
+                    <span><strong className="text-gray-800">Trace flows</strong> — follow radial lines to see blast radius and dependency depth.</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+            );
+          })()}
+
+          {/* ── Selected product / default MESHATLAS bubble ── */}
+          {(() => {
+            const sb = cfg.selBubble;
+            const hasSel = !!(selProduct || selApp);
+            const selName = selProduct ? selProduct.name : selApp ? (selApp.app_name ?? "") : "";
+            const selColor = selProduct ? (cfg.layerColors[selProduct.product_type] || cfg.text) : selApp ? cfg.layerColors.APPS : "transparent";
+            return (
+              <div className="absolute select-none z-[44]"
+                style={{ left: selLabelPos.x, bottom: -selLabelPos.y, transform: "translate(-50%, 50%)" }}
+                onClick={e => e.stopPropagation()}>
+                {IS_AUTHORING && <div className="absolute -top-3 left-1/2 -translate-x-1/2 shrink-0 flex items-center justify-center px-1 py-0.5 touch-none"
+                  style={{ cursor: selLabelDrag.current ? "grabbing" : "grab" }}
+                  onPointerDown={e => { e.stopPropagation(); (e.target as HTMLElement).setPointerCapture(e.pointerId); selLabelDrag.current = { sx: e.clientX, sy: e.clientY, ox: selLabelPos.x, oy: selLabelPos.y }; }}
+                  onPointerMove={e => { if (!selLabelDrag.current) return; setSelLabelPos({ x: selLabelDrag.current.ox + (e.clientX - selLabelDrag.current.sx), y: selLabelDrag.current.oy - (e.clientY - selLabelDrag.current.sy) }); }}
+                  onPointerUp={e => { selLabelDrag.current = null; (e.target as HTMLElement).releasePointerCapture(e.pointerId); }}>
+                  <svg className="opacity-40" width="10" height="5" viewBox="0 0 10 5"><circle cx="1.5" cy="2.5" r="0.9" fill="#666"/><circle cx="5" cy="2.5" r="0.9" fill="#666"/><circle cx="8.5" cy="2.5" r="0.9" fill="#666"/></svg>
+                </div>}
+                <div className="flex flex-col items-center justify-center" style={{
+                  width: sb.size, height: sb.size, borderRadius: "50%",
+                  background: sb.bg, border: `${sb.borderWidth}px solid ${sb.borderColor}`,
+                  backdropFilter: "blur(8px)",
+                  boxShadow: sb.shadow ? "0 2px 12px rgba(0,0,0,0.06), 0 1px 4px rgba(0,0,0,0.04)" : "none",
+                  textAlign: sb.textAlign as any, overflow: "hidden",
+                }}>
+                  {!hasSel ? (
+                    <span style={{ fontSize: sb.defaultFontSize, fontWeight: sb.defaultFontWeight, color: sb.defaultColor, opacity: sb.defaultOpacity, letterSpacing: "0.12em" }}>{sb.defaultText}</span>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-1">
+                        <span className="rounded-full shrink-0" style={{ width: sb.dotSize, height: sb.dotSize, background: selColor }} />
+                        <span style={{ fontSize: sb.selLabelFontSize, color: sb.selLabelColor, opacity: sb.selLabelOpacity, fontWeight: 500, letterSpacing: "0.06em", textTransform: "uppercase" as const }}>Selected</span>
+                      </div>
+                      <div className="leading-snug text-center mt-0.5 px-2" style={{ fontSize: sb.nameFontSize, fontWeight: sb.nameFontWeight, color: sb.nameColor, maxWidth: sb.size - 12, wordWrap: "break-word", overflowWrap: "break-word", hyphens: "auto" as const }}>{selName}</div>
+                      <div className="mt-0.5" style={{ fontSize: sb.subtitleFontSize, color: sb.subtitleColor, opacity: sb.subtitleOpacity }}>Dataflow &amp; Lineage</div>
+                    </>
+                  )}
+                </div>
+              </div>
+            );
           })()}
 
           {tip && <div className="fixed z-[200] pointer-events-none" style={{ left: (tip.x - (stageLeft - stageScroll.x) + 16) / uiZoom, top: (tip.y - (stageTop - stageScroll.y) - 8) / uiZoom, transform: "translateY(-100%)" }}><div className="bg-white rounded-xl shadow-2xl border border-gray-200 p-4 text-[11px] min-w-[220px] max-w-[280px]">{tip.content}</div></div>}
@@ -2285,6 +2403,8 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
                         navSettings: (() => { try { const r = localStorage.getItem("meshlens-settings"); return r ? JSON.parse(r) : null; } catch { return null; } })(),
                         focusTogglePos,
                         issuesTogglePos,
+                        howToUsePos,
+                        selLabelPos,
                         globalBg: (() => { try { return localStorage.getItem("meshatlas-global-bg"); } catch { return null; } })(),
                         activeThemeId: (() => { try { return localStorage.getItem("meshatlas-active-theme"); } catch { return null; } })(),
                         savedThemes: (() => { try { const r = localStorage.getItem("meshatlas-color-themes"); return r ? JSON.parse(r) : null; } catch { return null; } })(),
@@ -2477,6 +2597,45 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
                     <ColorRow label="Active Color" value={cfg.toggleBars.activeColor} onChange={v => updateCfg("toggleBars.activeColor", v)} />
                     <ColorRow label="Inactive Color" value={cfg.toggleBars.inactiveColor} onChange={v => updateCfg("toggleBars.inactiveColor", v)} />
                     <ToggleRow label="Drop Shadow" value={cfg.toggleBars.shadow} onChange={v => updateCfg("toggleBars.shadow", v)} />
+                    <div className="text-[9px] font-semibold text-gray-400 uppercase mt-3 mb-1.5">How to Use Panel</div>
+                    <div className="flex items-center justify-between py-1">
+                      <span className="text-[9px] text-gray-500">Position X</span>
+                      <input type="number" className="w-16 text-[9px] border border-gray-200 rounded px-1 py-0.5 text-right" value={Math.round(howToUsePos.x)} onChange={e => setHowToUsePos(p => ({ ...p, x: Number(e.target.value) }))} />
+                    </div>
+                    <div className="flex items-center justify-between py-1">
+                      <span className="text-[9px] text-gray-500">Position Y</span>
+                      <input type="number" className="w-16 text-[9px] border border-gray-200 rounded px-1 py-0.5 text-right" value={Math.round(howToUsePos.y)} onChange={e => setHowToUsePos(p => ({ ...p, y: Number(e.target.value) }))} />
+                    </div>
+                    <div className="text-[9px] font-semibold text-gray-400 uppercase mt-3 mb-1.5">Selected Bubble</div>
+                    <div className="flex items-center justify-between py-1">
+                      <span className="text-[9px] text-gray-500">Position X</span>
+                      <input type="number" className="w-16 text-[9px] border border-gray-200 rounded px-1 py-0.5 text-right" value={Math.round(selLabelPos.x)} onChange={e => setSelLabelPos(p => ({ ...p, x: Number(e.target.value) }))} />
+                    </div>
+                    <div className="flex items-center justify-between py-1">
+                      <span className="text-[9px] text-gray-500">Position Y</span>
+                      <input type="number" className="w-16 text-[9px] border border-gray-200 rounded px-1 py-0.5 text-right" value={Math.round(selLabelPos.y)} onChange={e => setSelLabelPos(p => ({ ...p, y: Number(e.target.value) }))} />
+                    </div>
+                    <SliderRow label="Bubble Size" value={cfg.selBubble.size} min={60} max={200} step={2} inputStep={1} onChange={v => updateCfg("selBubble.size", v)} unit="px" />
+                    <SliderRow label="Border Width" value={cfg.selBubble.borderWidth} min={0} max={4} step={0.5} inputStep={0.5} onChange={v => updateCfg("selBubble.borderWidth", v)} unit="px" />
+                    <ColorRow label="Background" value={cfg.selBubble.bg} onChange={v => updateCfg("selBubble.bg", v)} />
+                    <ColorRow label="Border Color" value={cfg.selBubble.borderColor} onChange={v => updateCfg("selBubble.borderColor", v)} />
+                    <ToggleRow label="Drop Shadow" value={cfg.selBubble.shadow} onChange={v => updateCfg("selBubble.shadow", v)} />
+                    <SliderRow label="Dot Size" value={cfg.selBubble.dotSize} min={2} max={10} step={0.5} inputStep={0.5} onChange={v => updateCfg("selBubble.dotSize", v)} unit="px" />
+                    <p className="text-[8px] text-gray-400 mt-2 mb-1">Default State (no selection)</p>
+                    <SliderRow label="Font Size" value={cfg.selBubble.defaultFontSize} min={6} max={18} step={0.5} inputStep={0.5} onChange={v => updateCfg("selBubble.defaultFontSize", v)} unit="px" />
+                    <SliderRow label="Font Weight" value={cfg.selBubble.defaultFontWeight} min={300} max={900} step={100} inputStep={100} onChange={v => updateCfg("selBubble.defaultFontWeight", v)} />
+                    <ColorRow label="Color" value={cfg.selBubble.defaultColor} onChange={v => updateCfg("selBubble.defaultColor", v)} />
+                    <SliderRow label="Opacity" value={cfg.selBubble.defaultOpacity} min={0.05} max={1} step={0.05} inputStep={0.05} onChange={v => updateCfg("selBubble.defaultOpacity", v)} />
+                    <p className="text-[8px] text-gray-400 mt-2 mb-1">Selected State</p>
+                    <SliderRow label="Label Size" value={cfg.selBubble.selLabelFontSize} min={5} max={14} step={0.5} inputStep={0.5} onChange={v => updateCfg("selBubble.selLabelFontSize", v)} unit="px" />
+                    <ColorRow label="Label Color" value={cfg.selBubble.selLabelColor} onChange={v => updateCfg("selBubble.selLabelColor", v)} />
+                    <SliderRow label="Label Opacity" value={cfg.selBubble.selLabelOpacity} min={0.1} max={1} step={0.05} inputStep={0.05} onChange={v => updateCfg("selBubble.selLabelOpacity", v)} />
+                    <SliderRow label="Name Size" value={cfg.selBubble.nameFontSize} min={7} max={18} step={0.5} inputStep={0.5} onChange={v => updateCfg("selBubble.nameFontSize", v)} unit="px" />
+                    <SliderRow label="Name Weight" value={cfg.selBubble.nameFontWeight} min={300} max={900} step={100} inputStep={100} onChange={v => updateCfg("selBubble.nameFontWeight", v)} />
+                    <ColorRow label="Name Color" value={cfg.selBubble.nameColor} onChange={v => updateCfg("selBubble.nameColor", v)} />
+                    <SliderRow label="Subtitle Size" value={cfg.selBubble.subtitleFontSize} min={5} max={12} step={0.5} inputStep={0.5} onChange={v => updateCfg("selBubble.subtitleFontSize", v)} unit="px" />
+                    <ColorRow label="Subtitle Color" value={cfg.selBubble.subtitleColor} onChange={v => updateCfg("selBubble.subtitleColor", v)} />
+                    <SliderRow label="Subtitle Opacity" value={cfg.selBubble.subtitleOpacity} min={0.1} max={1} step={0.05} inputStep={0.05} onChange={v => updateCfg("selBubble.subtitleOpacity", v)} />
                   </div>
                 )}
 
@@ -3884,12 +4043,15 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
                                   {items.map((item: any, di: number) => {
                                     const p = pts[di] || { x: cxy, y: cxy };
                                     const dc = dotColor(item);
+                                    const tipText = item.name || item.app_name || item.id;
                                     return (
                                       <circle key={item.id} cx={p.x} cy={p.y} r={dotR}
                                         fill={dc.fill} fillOpacity={dc.opacity}
                                         stroke={dc.stroke} strokeWidth={dc.strokeW}
                                         style={{ cursor: "pointer" }}
-                                        onClick={(e: React.MouseEvent) => { e.stopPropagation(); onDotClick(item); }} />
+                                        onClick={(e: React.MouseEvent) => { e.stopPropagation(); onDotClick(item); }}>
+                                        <title>{tipText}</title>
+                                      </circle>
                                     );
                                   })}
                                 </svg>
@@ -3957,6 +4119,14 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
                       <div>
                         <div className="font-bold" style={{ fontSize: ov.nsEntitiesTitleSize, color: nsEntTitleC }}>Mesh Entities</div>
                         <div style={{ fontSize: ov.nsEntitiesSubtitleSize, color: nsEntSubC }}>By domain</div>
+                      </div>
+                      <div className="relative group/info shrink-0">
+                        <div className="w-5 h-5 rounded-full flex items-center justify-center cursor-help" style={{ background: "rgba(0,0,0,0.06)" }}>
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={cfg.text} strokeWidth="2.5" strokeLinecap="round" strokeOpacity={0.45}><circle cx="12" cy="12" r="10" /><path d="M12 16v-4m0-4h.01" /></svg>
+                        </div>
+                        <div className="absolute right-0 top-full mt-1 px-2.5 py-1.5 rounded-lg shadow-lg text-[9px] leading-snug opacity-0 pointer-events-none group-hover/info:opacity-100 transition-opacity z-30 whitespace-nowrap" style={{ background: "#1a1a1a", color: "#fff" }}>
+                          Hover on bubbles for details · Click to select
+                        </div>
                       </div>
                     </div>
                     <div className="flex gap-1.5 mb-4">
@@ -5393,7 +5563,7 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
                           { icon: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z", label: "Owner", value: selProduct.owner || selProduct.domain_name },
                           { icon: "M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064", label: "Domain", value: selProduct.domain_name, dot: domainColorMap[selProduct.domain_name] || "#999" },
                           { icon: "M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4", label: "Format", value: selProduct.product_type === "SOURCE_ALIGNED" ? "Raw / Schema-on-Read" : selProduct.product_type === "BUSINESS" ? "Normalized / Star Schema" : "Materialized View / API" },
-                          { icon: "M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z", label: "Versioning", value: "Semantic (major.minor)" },
+                          { icon: "M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z", label: "Versioning", value: "1.0" },
                           { icon: "M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15", label: "Refresh", value: selProduct.sla_freshness || (selProduct.product_type === "SOURCE_ALIGNED" ? "Near real-time" : "Scheduled / Hourly") },
                           { icon: "M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4", label: "Retention", value: selProduct.product_type === "SOURCE_ALIGNED" ? "90 days + archived" : "Rolling 24 months" },
                         ].map((item, i) => (
@@ -5818,7 +5988,7 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
 
       {/* Bottom Description — uses exact Nav background (--nav-bg from settings, e.g. #fffef5) */}
       <section
-        className="border-t border-mesh-border"
+        className="border-t border-mesh-border page-responsive"
         style={{ background: "var(--nav-bg, var(--color-mesh-bg, #f4f4f4))" }}
       >
         <div className="max-w-[1728px] mx-auto px-3 py-12">
@@ -5827,7 +5997,7 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
               <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-mesh-accent mb-2">About</div>
               <div className="space-y-3 text-[12px] text-mesh-text-muted leading-[1.85]">
                 <p>
-                  Created by Naveen Mithare, MeshAtlas is a Data Mesh Observability personal project focused on making
+                  Created by <a href="https://www.linkedin.com/in/naveen-mithare-6206891a" target="_blank" rel="noopener noreferrer" className="underline hover:text-mesh-text transition-colors">Naveen Mithare</a>, MeshAtlas is a Data Mesh Observability personal project focused on making
                   enterprise metadata easier to understand and explore.
                 </p>
                 <p>
@@ -5869,9 +6039,33 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
             </div>
           </div>
 
+          <div className="mt-6 rounded-2xl border border-mesh-border bg-white/85 backdrop-blur-[2px] p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] flex items-center justify-between gap-4">
+            <div>
+              <div className="text-[12px] font-bold text-mesh-text mb-0.5">Share your feedback</div>
+              <div className="text-[11px] text-mesh-text-muted leading-snug">Help improve MeshAtlas — share thoughts, suggestions, or a testimonial.</div>
+            </div>
+            <a href="https://docs.google.com/forms/d/e/1FAIpQLSfsgqRxfcLEfoMOfClPw2EV2KejjLiP4kGnNcCwX8Es6bWh1Q/viewform?usp=publish-editor"
+              target="_blank" rel="noopener noreferrer"
+              className="shrink-0 px-4 py-2 rounded-lg text-[11px] font-semibold transition-all hover:shadow-md"
+              style={{ background: "#1a1a1a", color: "#fff" }}>
+              Give Feedback →
+            </a>
+          </div>
+
           <div className="mt-5 pt-4 border-t border-mesh-border/80 text-[11px] text-mesh-text-muted flex flex-wrap items-center justify-between gap-2">
-            <span>© {new Date().getFullYear()} Naveen Mithare. All rights reserved.</span>
-            <span>Built with love by Naveen ❤️</span>
+            <span>© {new Date().getFullYear()} <a href="https://www.linkedin.com/in/naveen-mithare-6206891a" target="_blank" rel="noopener noreferrer" className="underline hover:text-mesh-text transition-colors">Naveen Mithare</a>. All rights reserved.</span>
+            <div className="flex items-center gap-3">
+              <a href="mailto:naveenmithare@gmail.com" title="naveenmithare@gmail.com" className="opacity-60 hover:opacity-100 transition-opacity">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2" /><path d="M22 7l-10 7L2 7" /></svg>
+              </a>
+              <a href="https://www.linkedin.com/in/naveen-mithare-6206891a" target="_blank" rel="noopener noreferrer" title="LinkedIn" className="opacity-60 hover:opacity-100 transition-opacity">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" /></svg>
+              </a>
+              <a href="https://X.com/naveenmithare" target="_blank" rel="noopener noreferrer" title="X (Twitter)" className="opacity-60 hover:opacity-100 transition-opacity">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
+              </a>
+              <span className="ml-1">Built with love by Naveen ❤️</span>
+            </div>
           </div>
         </div>
       </section>

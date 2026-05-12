@@ -41,7 +41,7 @@ const APPS = [
   { name: "DocuSign", app_type: "SaaS", domain_id: "sales", vendor: "DocuSign", description: "Contract & e-signature management" },
   { name: "Salesforce Marketing Cloud", app_type: "SaaS", domain_id: "sales", vendor: "Salesforce", description: "B2B marketing automation tied to CRM" },
   // Finance (8)
-  { name: "SAP EBS", app_type: "SaaS", domain_id: "finance", vendor: "SAP", description: "Core ERP — GL, AP/AR, fixed assets, cost centers" },
+  { name: "EBS", app_type: "SaaS", domain_id: "finance", vendor: "SAP", description: "Core ERP — GL, AP/AR, fixed assets, cost centers" },
   { name: "Oracle Financials", app_type: "SaaS", domain_id: "finance", vendor: "Oracle", description: "General ledger, intercompany, consolidation" },
   { name: "Stripe", app_type: "API", domain_id: "finance", vendor: "Stripe", description: "Payment processing — charges, refunds, disputes" },
   { name: "NetSuite", app_type: "SaaS", domain_id: "finance", vendor: "Oracle", description: "Cloud ERP — accounting & revenue recognition" },
@@ -102,7 +102,7 @@ const DATA_PRODUCTS = [
   // ── SOURCE-ALIGNED (one per major app family) ──
   { id: "src-salesforce-raw", name: "Salesforce", domain_id: "sales", product_type: "SOURCE_ALIGNED", tier: "BRONZE", quality_score: 0.88, sla_freshness: "< 1hr", owner: "Sales Ops", description: "Raw Salesforce objects: Opportunity, Account, Contact, Lead, Task, Event" },
   { id: "src-hubspot-raw", name: "HubSpot", domain_id: "sales", product_type: "SOURCE_ALIGNED", tier: "BRONZE", quality_score: 0.85, sla_freshness: "< 1hr", owner: "Sales Ops", description: "HubSpot contacts, companies, deals, engagements" },
-  { id: "src-sap-raw", name: "SAP EBS", domain_id: "finance", product_type: "SOURCE_ALIGNED", tier: "BRONZE", quality_score: 0.92, sla_freshness: "< 6hr", owner: "Finance Engineering", description: "SAP GL entries, AP/AR transactions, cost centers, journals" },
+  { id: "src-sap-raw", name: "EBS", domain_id: "finance", product_type: "SOURCE_ALIGNED", tier: "BRONZE", quality_score: 0.92, sla_freshness: "< 6hr", owner: "Finance Engineering", description: "SAP GL entries, AP/AR transactions, cost centers, journals" },
   { id: "src-stripe-raw", name: "Stripe", domain_id: "finance", product_type: "SOURCE_ALIGNED", tier: "BRONZE", quality_score: 0.95, sla_freshness: "< 15min", owner: "Finance Engineering", description: "Stripe charges, refunds, disputes, subscriptions, invoices" },
   { id: "src-netsuite-raw", name: "NetSuite", domain_id: "finance", product_type: "SOURCE_ALIGNED", tier: "BRONZE", quality_score: 0.87, sla_freshness: "< 6hr", owner: "Finance Engineering", description: "NetSuite transactions, accounts, vendors, revenue schedules" },
   { id: "src-kafka-inventory", name: "Inventory Events Stream", domain_id: "supply-chain", product_type: "SOURCE_ALIGNED", tier: "BRONZE", quality_score: 0.91, sla_freshness: "< 5min", owner: "Supply Chain Tech", description: "Real-time inventory movements: receipts, transfers, adjustments" },

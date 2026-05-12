@@ -132,7 +132,7 @@ const APP_TYPE_ICONS: Record<string, string> = {
 
 const DOMAIN_STORIES: Record<string, string> = {
   Sales: "The Sales domain drives Orange Co's revenue engine. The team manages the full customer lifecycle from lead generation to deal closure. ZoomInfo identifies target accounts. Outreach and Salesloft run multi-channel sequences. Gong records and analyzes every customer call, surfacing coaching insights and deal risk signals. Salesforce is the system of record for pipeline and opportunities, while CPQ handles complex quoting for enterprise deals. DocuSign closes the loop with electronic signatures. HubSpot supplements as a secondary CRM for the SMB segment. Salesforce Marketing Cloud powers sales-driven email campaigns. Clari provides pipeline forecasting for leadership.",
-  Finance: "The Finance domain manages all financial operations — revenue recognition, billing, accounts payable, tax compliance, and financial planning. SAP EBS and Oracle Financials handle the general ledger and enterprise accounting. Stripe processes payment transactions from the e-commerce platform. Zuora manages subscription billing — renewals, upgrades, and usage-based add-ons. NetSuite handles revenue schedules and ASC 606 compliance. Coupa manages procurement spend. Avalara automates tax calculations across jurisdictions. Anaplan powers the FP&A team's budgeting and forecasting models.",
+  Finance: "The Finance domain manages all financial operations — revenue recognition, billing, accounts payable, tax compliance, and financial planning. EBS and Oracle Financials handle the general ledger and enterprise accounting. Stripe processes payment transactions from the e-commerce platform. Zuora manages subscription billing — renewals, upgrades, and usage-based add-ons. NetSuite handles revenue schedules and ASC 606 compliance. Coupa manages procurement spend. Avalara automates tax calculations across jurisdictions. Anaplan powers the FP&A team's budgeting and forecasting models.",
   "Supply Chain": "The Supply Chain domain orchestrates everything from raw material procurement to last-mile delivery. SAP SCM manages procurement planning and vendor relationships with manufacturing partners. Oracle SCM Cloud handles demand forecasting and inventory optimization. Kafka streams real-time events — order lifecycle events and inventory movements across warehouses. Kinaxis provides demand sensing and S&OP scenario planning. Manhattan WMS controls warehouse operations — receiving, putaway, wave planning, picking, and packing. FourKites tracks in-transit shipments and predicts ETAs. ShipStation manages carrier selection and last-mile shipping labels.",
   Marketing: "The Marketing domain generates demand and nurtures prospects through the entire buyer journey. Google Ads and Meta Ads run paid acquisition — prospecting, retargeting, and lookalike campaigns. LinkedIn Ads targets enterprise decision-makers for the B2B wholesale channel. Google Analytics 4 tracks web and app sessions. Segment acts as the customer data platform, collecting events from every digital touchpoint into unified user profiles. Marketo powers B2B lead nurturing and MQL handoff to Sales. Braze and Iterable drive lifecycle messaging — onboarding flows, re-engagement, and churn prevention. Contentful manages structured content for the website and landing pages.",
   Product: "The Product domain builds and operates Orange Co's digital platform. Amplitude and Pendo measure product adoption — feature usage, retention cohorts, and NPS. Kafka streams real-time clickstream data for behavioral analytics and the recommendation engine. GitHub hosts all source code and tracks pull request velocity. Jira manages sprint planning across engineering squads. LaunchDarkly controls feature flags for progressive rollouts and A/B experiments. Datadog provides infrastructure and application monitoring. PagerDuty manages on-call rotations and incident response. PostgreSQL is the primary application database.",
@@ -151,7 +151,7 @@ const APP_DESCRIPTIONS: Record<string, string> = {
   Clari: "Revenue forecasting platform. Provides AI-driven pipeline predictions and deal risk scoring for leadership.",
   ZoomInfo: "B2B data provider. Enriches leads with firmographic and contact data for account-based marketing and prospecting.",
   "Salesforce Marketing Cloud": "Enterprise email and marketing automation for sales-driven campaigns, event invitations, and customer communications.",
-  "SAP EBS": "Core ERP system. Manages general ledger, accounts payable/receivable, cost centers, and vendor master data.",
+  "EBS": "Core ERP system. Manages general ledger, accounts payable/receivable, cost centers, and vendor master data.",
   "Oracle Financials": "Enterprise financial management. Handles multi-entity consolidation, intercompany transactions, and statutory reporting.",
   Stripe: "Payment processing platform. Handles online transactions, subscriptions, invoicing, and payout reconciliation.",
   Zuora: "Subscription management and billing. Powers recurring revenue models, usage-based pricing, and subscription lifecycle.",
@@ -212,7 +212,7 @@ export default function IntroClient(props: Props) {
   }));
 
   return (
-    <div className="pt-24">
+    <div className="pt-24 page-responsive">
       {/* ═══════════════════════════════════════════════════════ */}
       {/* HERO — WHAT IS DATA MESH                              */}
       {/* ═══════════════════════════════════════════════════════ */}
@@ -419,7 +419,7 @@ export default function IntroClient(props: Props) {
             { title: "Market", desc: "Marketing drives demand through Google Ads, Meta, and LinkedIn campaigns. Segment stitches every customer touchpoint into a unified event stream. Braze and Iterable handle lifecycle messaging for subscribers.", color: "#a78bfa", icon: "Marketing" },
             { title: "Fulfill", desc: "Supply Chain orchestrates end-to-end fulfillment — SAP and Oracle SCM for procurement, Kafka for real-time order and inventory events, Manhattan WMS for warehouse operations, and ShipStation for last-mile delivery.", color: "#2a9d8f", icon: "Supply Chain" },
             { title: "Build", desc: "Product & Engineering builds and operates the platform. Amplitude and Pendo capture product usage. GitHub and Jira track delivery velocity. Datadog and PagerDuty keep systems healthy. Kafka streams real-time clickstream data.", color: "#60a5fa", icon: "Product" },
-            { title: "Finance", desc: "Finance runs on SAP EBS and Oracle Financials for ledger and GL. Stripe and Zuora handle billing and subscriptions. NetSuite manages revenue schedules. Anaplan powers FP&A planning.", color: "#e9c46a", icon: "Finance" },
+            { title: "Finance", desc: "Finance runs on EBS and Oracle Financials for ledger and GL. Stripe and Zuora handle billing and subscriptions. NetSuite manages revenue schedules. Anaplan powers FP&A planning.", color: "#e9c46a", icon: "Finance" },
             { title: "People", desc: "HR manages the employee lifecycle through Workday and BambooHR. Greenhouse handles recruiting. Lattice and Culture Amp drive performance reviews and engagement surveys. Deel manages global contractors.", color: "#f472b6", icon: "HR" },
             { title: "Support", desc: "Customer Support ensures every interaction is tracked and resolved. Zendesk manages tickets and SLAs. Intercom handles live chat. Statuspage communicates incidents. Confluence stores runbooks. SurveyMonkey captures CSAT scores.", color: "#f97316", icon: "Support" },
           ];
@@ -625,13 +625,16 @@ export default function IntroClient(props: Props) {
 
         <div className="space-y-5 text-[16px] text-mesh-text-muted leading-[1.9] mb-12">
           <p>
-            A data mesh at enterprise scale is a living system — domains evolve, products multiply,
-            consumers shift, and quality drifts. Static wikis and slide decks cannot keep up.{" "}
-            <strong className="text-mesh-text">MeshLens</strong> is built for exactly this gap: an
-            interactive visualization layer that sits on top of your mesh metadata and makes it
-            <strong className="text-mesh-text"> navigable, measurable, and communicable</strong> —
-            so every stakeholder from the CTO to a junior analyst can understand the mesh in the way
-            that matters to them.
+            A data mesh at enterprise scale is a living system. Domains evolve, data products multiply,
+            consumers shift, pipelines change, and quality can drift. Static wikis and slide decks
+            quickly fall behind.
+          </p>
+          <p>
+            MeshLens turns enterprise mesh metadata into an interactive data ecosystem map — connecting
+            domains, applications, data products, lineage, quality, cost, and operational health in one
+            navigable view. Built as a visualization layer on top of mesh metadata, MeshLens helps teams
+            make the ecosystem easier to explore, measure, and communicate — from CTO-level architecture
+            reviews to day-to-day analysis by data product owners, platform teams, and analysts.
           </p>
         </div>
 

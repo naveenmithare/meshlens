@@ -13,7 +13,7 @@ export default function SemanticClient() {
   const uniqueSources = new Set(views.flatMap((v) => v.sources)).size;
 
   return (
-    <div className="pt-28 min-h-screen">
+    <div className="pt-28 min-h-screen page-responsive">
       {/* Hero */}
       <section className="max-w-[1200px] mx-auto px-8 pb-14">
         <span className="section-label">Semantic Layer</span>

@@ -177,3 +177,29 @@ html[data-font="space-grotesk"] body { font-family: var(--font-space-grotesk), s
 .card-tapdaa:hover {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
 }
+
+/* ── Resolution-responsive scaling ──────────── */
+.page-responsive {
+  zoom: 1;
+}
+@media (max-width: 1024px) {
+  .page-responsive { zoom: 0.78; }
+}
+@media (min-width: 1025px) and (max-width: 1280px) {
+  .page-responsive { zoom: 0.88; }
+}
+@media (min-width: 1281px) and (max-width: 1440px) {
+  .page-responsive { zoom: 0.95; }
+}
+@media (min-width: 1441px) and (max-width: 1680px) {
+  .page-responsive { zoom: 1; }
+}
+@media (min-width: 1681px) and (max-width: 1920px) {
+  .page-responsive { zoom: 1.08; }
+}
+@media (min-width: 1921px) and (max-width: 2560px) {
+  .page-responsive { zoom: 1.2; }
+}
+@media (min-width: 2561px) {
+  .page-responsive { zoom: 1.35; }
+}

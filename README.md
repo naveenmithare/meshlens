@@ -67,7 +67,7 @@ Inspired by Fivetran's Platform Connector schema, extended for full data mesh:
 The seed script generates realistic enterprise metadata:
 
 - 7 domains (Sales, Finance, Supply Chain, Marketing, Product, HR, Support)
-- 55 applications (Salesforce, Jira, SAP EBS, Kafka, GitHub, Workday, ...)
+- 55 applications (Salesforce, Jira, EBS, Kafka, GitHub, Workday, ...)
 - 55 pipeline connections with varied connectors and sync frequencies
 - 89 data products (55 source, 21 business, 14 consumer)
 - 117 lineage edges across domains
