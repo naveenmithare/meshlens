@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from "react";
 import { IS_AUTHORING } from "@/lib/authoring";
 
 const links = [
@@ -60,14 +60,14 @@ function normalizePathname(pathname: string | null): string {
 
 export default function Nav() {
   const pathname = usePathname();
-  const normalizedPath = normalizePathname(pathname);
+  const normalizedPath = useMemo(() => {
+    if (typeof window !== "undefined") {
+      return normalizePathname(window.location.pathname);
+    }
+    return normalizePathname(pathname);
+  }, [pathname]);
   /** Keeps tab highlight in sync with navigation before usePathname() commits (App Router can lag one frame). */
   const [pendingHref, setPendingHref] = useState<string | null>(null);
-  const [clientPath, setClientPath] = useState<string | null>(null);
-
-  useLayoutEffect(() => {
-    setClientPath(normalizePathname(window.location.pathname));
-  }, []);
 
   useLayoutEffect(() => {
     if (!pendingHref) return;
@@ -79,13 +79,12 @@ export default function Nav() {
   useEffect(() => {
     function onPopState() {
       setPendingHref(null);
-      setClientPath(normalizePathname(window.location.pathname));
     }
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
 
-  const path = pendingHref ? normalizePathname(pendingHref) : (clientPath ?? normalizedPath);
+  const path = pendingHref ? normalizePathname(pendingHref) : normalizedPath;
 
   const [showSettings, setShowSettings] = useState(false);
   const [activeFont, setActiveFont] = useState(() => {
