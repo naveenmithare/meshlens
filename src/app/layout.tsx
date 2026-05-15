@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter, DM_Sans, Plus_Jakarta_Sans, Outfit, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import Nav from "@/components/layout/Nav";
-import { Analytics } from '@vercel/analytics/next';
+import { Analytics } from "@vercel/analytics/next";
 
 export const viewport: Viewport = {
   width: "device-width",
