@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter, DM_Sans, Plus_Jakarta_Sans, Outfit, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import Nav from "@/components/layout/Nav";
+import { Analytics } from '@vercel/analytics/next';
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -44,6 +45,7 @@ export default function RootLayout({
         <body suppressHydrationWarning className={`${inter.variable} ${dmSans.variable} ${jakarta.variable} ${outfit.variable} ${spaceGrotesk.variable} antialiased bg-mesh-bg text-mesh-text`}>
         <Nav />
         <main className="min-w-0 pb-[env(safe-area-inset-bottom)]">{children}</main>
+        <Analytics />
       </body>
     </html>
   );
