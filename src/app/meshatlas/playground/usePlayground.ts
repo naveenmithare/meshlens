@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useLayoutEffect, useCallback } from "react";
+import { useState, useRef, useCallback } from "react";
 import type { PlaygroundConfig } from "./types";
 import { DEFAULTS } from "./types";
 import { IS_AUTHORING } from "@/lib/authoring";
@@ -328,24 +328,23 @@ export function buildRightPanelSyncUpdates(cfg: PlaygroundConfig, source: RightP
   return out;
 }
 
-export function usePlayground(storageKey: string): [PlaygroundConfig, (path: string, value: any) => void, () => void, () => void, boolean, (updates: Record<string, unknown>) => void] {
-  const [cfg, setCfg] = useState<PlaygroundConfig>(() => loadPlaygroundConfig(storageKey));
-  const [canUndo, setCanUndo] = useState(false);
-  const historyRef = useRef<string[]>([]);
-  const lastPushRef = useRef(0);
+function initPlaygroundHistory(storageKey: string): string[] {
+  if (!IS_AUTHORING) return [JSON.stringify(cloneDefaultConfig())];
+  try {
+    const raw = localStorage.getItem(storageKey);
+    return [raw || JSON.stringify(cloneDefaultConfig())];
+  } catch {
+    return [JSON.stringify(cloneDefaultConfig())];
+  }
+}
 
-  useLayoutEffect(() => {
-    if (!IS_AUTHORING) {
-      setCfg(cloneDefaultConfig());
-      historyRef.current = [JSON.stringify(cloneDefaultConfig())];
-      return;
-    }
-    setCfg(loadPlaygroundConfig(storageKey));
-    try {
-      const raw = localStorage.getItem(storageKey);
-      historyRef.current = [raw || JSON.stringify(cloneDefaultConfig())];
-    } catch { historyRef.current = [JSON.stringify(cloneDefaultConfig())]; }
-  }, [storageKey]);
+export function usePlayground(storageKey: string): [PlaygroundConfig, (path: string, value: any) => void, () => void, () => void, boolean, (updates: Record<string, unknown>) => void] {
+  const [cfg, setCfg] = useState<PlaygroundConfig>(() =>
+    IS_AUTHORING ? loadPlaygroundConfig(storageKey) : cloneDefaultConfig(),
+  );
+  const [canUndo, setCanUndo] = useState(false);
+  const historyRef = useRef<string[]>(initPlaygroundHistory(storageKey));
+  const lastPushRef = useRef(0);
 
   const update = useCallback((path: string, value: any) => {
     if (!IS_AUTHORING) return;

@@ -60,29 +60,23 @@ function normalizePathname(pathname: string | null): string {
 
 export default function Nav() {
   const pathname = usePathname();
-  const [activePath, setActivePath] = useState<string>(() => normalizePathname(pathname));
+  const routerPath = normalizePathname(pathname);
+  const [popPath, setPopPath] = useState<string | null>(null);
   const [pendingHref, setPendingHref] = useState<string | null>(null);
-
-  useLayoutEffect(() => {
-    setActivePath(normalizePathname(window.location.pathname));
-  }, [pathname]);
-
-  useLayoutEffect(() => {
-    if (pendingHref && activePath === normalizePathname(pendingHref)) {
-      setPendingHref(null);
-    }
-  }, [pendingHref, activePath]);
 
   useEffect(() => {
     function onPopState() {
       setPendingHref(null);
-      setActivePath(normalizePathname(window.location.pathname));
+      setPopPath(normalizePathname(window.location.pathname));
     }
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
 
-  const path = pendingHref ? normalizePathname(pendingHref) : activePath;
+  const activePath = popPath && popPath !== routerPath ? popPath : routerPath;
+  const pendingNorm = pendingHref ? normalizePathname(pendingHref) : null;
+  const path =
+    pendingNorm && pendingNorm !== routerPath ? pendingNorm : activePath;
 
   const [showSettings, setShowSettings] = useState(false);
   const [activeFont, setActiveFont] = useState(() => {
