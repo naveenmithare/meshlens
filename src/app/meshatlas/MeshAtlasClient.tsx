@@ -425,11 +425,15 @@ export default function MeshAtlasClient({ graph, overview, domains, apps, produc
   }, [DESIGN_HEIGHT]);
   const availableWidth = Math.max(0, viewportSize.w - VIEWPORT_MARGIN * 2);
   const availableHeight = Math.max(0, viewportSize.h - NAV_HEIGHT - VIEWPORT_MARGIN * 2);
+  const compactStage = availableWidth < 768;
   const fitZoom = useMemo(() => {
     const widthScale = availableWidth / DESIGN_WIDTH;
     const heightScale = availableHeight / DESIGN_HEIGHT;
+    if (compactStage) {
+      return Math.min(Math.max(0.01, widthScale), MAX_EFFECTIVE_STAGE_SCALE);
+    }
     return Math.min(Math.max(0.01, widthScale), Math.max(0.01, heightScale));
-  }, [DESIGN_HEIGHT, DESIGN_WIDTH, availableHeight, availableWidth]);
+  }, [DESIGN_HEIGHT, DESIGN_WIDTH, MAX_EFFECTIVE_STAGE_SCALE, availableHeight, availableWidth, compactStage]);
   const requestedStageScale = Math.max(0.5, cfg.stageScaleFactor ?? 1);
   const uiZoom = useMemo(
     () => Math.min(MAX_EFFECTIVE_STAGE_SCALE, fitZoom * requestedStageScale),
@@ -6039,7 +6043,7 @@ ${cfg.animationPaused ? `.idle-node,.murmur-node,.murmur-line,.fl,.fl-fast,.idle
             </div>
           </div>
 
-          <div className="mt-6 rounded-2xl border border-mesh-border bg-white/85 backdrop-blur-[2px] p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] flex items-center justify-between gap-4">
+          <div className="mt-6 rounded-2xl border border-mesh-border bg-white/85 backdrop-blur-[2px] p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <div className="text-[12px] font-bold text-mesh-text mb-0.5">Share your feedback</div>
               <div className="text-[11px] text-mesh-text-muted leading-snug">Help improve MeshAtlas — share thoughts, suggestions, or a testimonial.</div>

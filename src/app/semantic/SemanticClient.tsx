@@ -13,9 +13,9 @@ export default function SemanticClient() {
   const uniqueSources = new Set(views.flatMap((v) => v.sources)).size;
 
   return (
-    <div className="pt-28 min-h-screen page-responsive">
+    <div className="pt-24 sm:pt-28 min-h-screen page-responsive">
       {/* Hero */}
-      <section className="max-w-[1200px] mx-auto px-8 pb-14">
+      <section className="max-w-[1200px] mx-auto px-4 sm:px-8 pb-14">
         <span className="section-label">Semantic Layer</span>
         <h1 className="heading-display mb-5">Schema & Data Architecture</h1>
         <p className="text-[16px] text-mesh-text-muted leading-[1.9]">
@@ -28,9 +28,9 @@ export default function SemanticClient() {
       </section>
 
       {/* Design Principles */}
-      <section className="max-w-[1200px] mx-auto px-8 pb-16 border-t border-mesh-border pt-16">
+      <section className="max-w-[1200px] mx-auto px-4 sm:px-8 pb-16 border-t border-mesh-border pt-16">
         <h2 className="text-xl font-semibold text-mesh-text mb-8">Design Principles</h2>
-        <div className="grid grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[
             { title: "Domain-Driven Ownership", color: "#a78bfa", icon: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z", desc: "Every entity belongs to a domain. Applications, data products, and governance policies carry a domain_id FK — enabling per-domain ownership, cost attribution, and health scoring." },
             { title: "Lineage-First Modeling", color: "#22c55e", icon: "M17 16l-4-4V8.82C14.16 8.4 15 7.3 15 6c0-1.66-1.34-3-3-3S9 4.34 9 6c0 1.3.84 2.4 2 2.82V12l-4 4H2v5h5v-3.05l4-4.2 4 4.2V21h5v-5h-3z", desc: "Lineage edges connect data products — not tables or columns. This gives a high-level, product-centric view of data flow (FEEDS, DERIVES, AGGREGATES) that maps directly to business understanding." },
@@ -48,7 +48,7 @@ export default function SemanticClient() {
       </section>
 
       {/* ERD */}
-      <section className="max-w-[1200px] mx-auto px-8 pb-16">
+      <section className="max-w-[1200px] mx-auto px-4 sm:px-8 pb-16">
         <h2 className="text-xl font-semibold text-mesh-text mb-3">Entity Relationship Diagram</h2>
         <p className="text-base text-mesh-text-muted leading-relaxed mb-6">
           14 tables organized across four zones — core platform entities model the organizational structure,
@@ -61,12 +61,12 @@ export default function SemanticClient() {
       </section>
 
       {/* Schema Groups */}
-      <section className="max-w-[1200px] mx-auto px-8 pb-16">
+      <section className="max-w-[1200px] mx-auto px-4 sm:px-8 pb-16">
         <h2 className="text-xl font-semibold text-mesh-text mb-2">Schema Design</h2>
         <p className="text-base text-mesh-text-muted leading-relaxed mb-8">
           Three logical groups organize the schema — core platform entities, the data mesh product layer, and operational health with governance controls.
         </p>
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {SCHEMA_GROUPS.map((group) => (
             <div key={group.title} className="rounded-2xl overflow-hidden border border-gray-200 bg-white shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
               <div className="px-5 pt-5 pb-4 border-b border-gray-100" style={{ background: `${group.color}08` }}>
@@ -118,7 +118,7 @@ export default function SemanticClient() {
       </section>
 
       {/* ═══ View Catalog ═══ */}
-      <section className="max-w-[1200px] mx-auto px-8 pb-16 min-w-0">
+      <section className="max-w-[1200px] mx-auto px-4 sm:px-8 pb-16 min-w-0">
         <div className="flex items-end justify-between mb-2">
           <h2 className="text-xl font-semibold text-mesh-text">View Catalog</h2>
           <div className="flex items-center gap-3 text-[11px] text-mesh-text-muted/50">
@@ -260,7 +260,7 @@ export default function SemanticClient() {
               )}
 
               {catalogTab === "sources" && (
-                <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {activeView.sourceDetails.map((src, i) => (
                     <div key={src.table} className="bg-mesh-bg-light border border-mesh-border rounded-xl p-4 relative">
                       <div className="absolute top-0 left-4 right-4 h-px bg-gradient-to-r from-transparent via-mesh-accent/10 to-transparent" />
@@ -348,7 +348,7 @@ export default function SemanticClient() {
       </section>
 
       {/* Adoption — MeshLens semantic model (full column width, intro-style body) */}
-      <section className="max-w-[1200px] mx-auto px-8 pb-24 min-w-0 border-t border-mesh-border pt-16">
+      <section className="max-w-[1200px] mx-auto px-4 sm:px-8 pb-24 min-w-0 border-t border-mesh-border pt-16">
         <h2 className="text-xl font-semibold text-mesh-text mb-6">Adopting the MeshLens Semantic Model</h2>
         <div className="space-y-5 text-[16px] text-mesh-text-muted leading-[1.9]">
           <p>

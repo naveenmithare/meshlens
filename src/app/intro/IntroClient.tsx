@@ -212,12 +212,12 @@ export default function IntroClient(props: Props) {
   }));
 
   return (
-    <div className="pt-24 page-responsive">
+    <div className="pt-20 sm:pt-24 page-responsive">
       {/* ═══════════════════════════════════════════════════════ */}
       {/* HERO — WHAT IS DATA MESH                              */}
       {/* ═══════════════════════════════════════════════════════ */}
       <header className="relative overflow-hidden">
-        <div className="max-w-[1200px] mx-auto px-8 pt-20 pb-12 relative z-10">
+        <div className="max-w-[1200px] mx-auto px-4 sm:px-8 pt-20 pb-12 relative z-10">
           <span className="section-label">Introduction</span>
           <h1 className="heading-display !text-[clamp(1.75rem,3.8vw,2.8rem)] mb-8">
             What Is a Data Mesh — <span className="text-mesh-accent">and Why Enterprise Needs One</span>
@@ -352,12 +352,12 @@ export default function IntroClient(props: Props) {
       {/* ═══════════════════════════════════════════════════════ */}
       {/* SECTION 1 — OUR ENTERPRISE                            */}
       {/* ═══════════════════════════════════════════════════════ */}
-      <section className="max-w-[1200px] mx-auto px-8 section-gap">
+      <section className="max-w-[1200px] mx-auto px-4 sm:px-8 section-gap">
         <SectionHeading number="1">Meet Orange Co</SectionHeading>
 
         {/* Company brand strap */}
-        <div className="flex items-center gap-5 mb-10 rounded-2xl bg-gradient-to-r from-[#eb7a35] via-[#f59e0b] to-[#eb7a35] px-8 py-5">
-          <div className="flex items-center gap-4">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:gap-5 mb-10 rounded-2xl bg-gradient-to-r from-[#eb7a35] via-[#f59e0b] to-[#eb7a35] px-5 py-5 sm:px-8">
+          <div className="flex items-center gap-4 min-w-0">
             <div className="w-14 h-14 rounded-xl bg-white/20 flex items-center justify-center">
               <span className="text-3xl font-black text-white">O</span>
             </div>
@@ -366,7 +366,7 @@ export default function IntroClient(props: Props) {
               <p className="text-[13px] text-white/80 font-medium">Technology-Driven Commerce · Global Enterprise</p>
             </div>
           </div>
-          <div className="ml-auto flex gap-8">
+          <div className="flex gap-8 sm:ml-auto border-t border-white/25 pt-4 sm:border-t-0 sm:pt-0">
             <div className="text-center">
               <div className="text-2xl font-bold text-white">{overview.domain_count}</div>
               <div className="text-[10px] text-white/70 uppercase tracking-wider font-semibold">Domains</div>
@@ -454,7 +454,7 @@ export default function IntroClient(props: Props) {
       {/* ═══════════════════════════════════════════════════════ */}
       {/* SECTION 2 — DOMAINS & APPLICATIONS                    */}
       {/* ═══════════════════════════════════════════════════════ */}
-      <section className="max-w-[1200px] mx-auto px-8 section-gap">
+      <section className="max-w-[1200px] mx-auto px-4 sm:px-8 section-gap">
         <SectionHeading number="2">Domains &amp; Their Applications</SectionHeading>
         <p className="text-[16px] text-mesh-text-muted leading-[1.9] mb-4">
           Following domain-driven design, we organized the enterprise into seven autonomous domains.
@@ -471,13 +471,13 @@ export default function IntroClient(props: Props) {
         {/* Domain selector + detail — single card */}
         <div className="bg-white rounded-2xl shadow-[0_1px_6px_rgba(0,0,0,0.05)] overflow-hidden">
           {/* Tabs */}
-          <div className="grid grid-cols-7 gap-0 border-b border-[#f0f0f0]">
+          <div className="flex overflow-x-auto no-scrollbar sm:grid sm:grid-cols-7 gap-0 border-b border-[#f0f0f0]">
             {grouped.map((d) => {
               const isOpen = expandedDomain === d.domain_name;
               return (
                 <button key={d.domain_name}
                   onClick={() => setExpandedDomain(isOpen ? null : d.domain_name)}
-                  className="flex flex-col items-center gap-1.5 py-4 text-center transition-all duration-200 cursor-pointer relative"
+                  className="flex shrink-0 flex-col items-center gap-1.5 py-4 px-3 sm:px-0 text-center transition-all duration-200 cursor-pointer relative min-w-[92px] sm:min-w-0"
                   style={{
                     background: isOpen ? `${d.color_hex}0D` : "transparent",
                   }}>
@@ -498,7 +498,7 @@ export default function IntroClient(props: Props) {
             if (!d) return null;
             const domainStory = DOMAIN_STORIES[d.domain_name] ?? "";
             return (
-              <div className="p-8 animate-in fade-in duration-200">
+              <div className="p-4 sm:p-8 animate-in fade-in duration-200">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center"
                     style={{ backgroundColor: `${d.color_hex}15` }}>
@@ -538,7 +538,7 @@ export default function IntroClient(props: Props) {
       {/* ═══════════════════════════════════════════════════════ */}
       {/* SECTION 3 — BUILDING THE ENTERPRISE MESH              */}
       {/* ═══════════════════════════════════════════════════════ */}
-      <section className="max-w-[1200px] mx-auto px-8 section-gap">
+      <section className="max-w-[1200px] mx-auto px-4 sm:px-8 section-gap">
         <SectionHeading number="3">Building the Enterprise Mesh</SectionHeading>
 
         {/* Narrative — data products philosophy */}
@@ -557,7 +557,7 @@ export default function IntroClient(props: Props) {
         </div>
 
         {/* Three product layers — overview only */}
-        <div className="grid grid-cols-3 gap-4 mb-12">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-12">
           {[
             { label: "Source Data Products", count: products.filter((p) => p.product_type === "SOURCE_ALIGNED").length, color: "#c2702e", desc: "Every source application gets a 1:1 data product — a schema-faithful landing zone that preserves the original structure while making it queryable and governed inside the mesh.", icon: "M12 3C7.58 3 4 4.79 4 7v10c0 2.21 3.58 4 8 4s8-1.79 8-4V7c0-2.21-3.58-4-8-4zm0 2c3.87 0 6 1.5 6 2s-2.13 2-6 2-6-1.5-6-2 2.13-2 6-2z" },
             { label: "Business Data Products", count: products.filter((p) => p.product_type === "BUSINESS").length, color: "#eab308", desc: "Domain teams compose source products into analytical entities — Customer 360, Revenue Ledger, Campaign Performance — combining data across systems into a single trusted view.", icon: "M17 16l-4-4V8.82C14.16 8.4 15 7.3 15 6c0-1.66-1.34-3-3-3S9 4.34 9 6c0 1.3.84 2.4 2 2.82V12l-4 4H2v5h5v-3.05l4-4.2 4 4.2V21h5v-5h-3z" },
@@ -620,7 +620,7 @@ export default function IntroClient(props: Props) {
       {/* ═══════════════════════════════════════════════════════ */}
       {/* SECTION 5 — ABOUT MESHLENS                            */}
       {/* ═══════════════════════════════════════════════════════ */}
-      <section className="max-w-[1200px] mx-auto px-8 section-gap">
+      <section className="max-w-[1200px] mx-auto px-4 sm:px-8 section-gap">
         <SectionHeading number="4">Introducing MeshLens</SectionHeading>
 
         <div className="space-y-5 text-[16px] text-mesh-text-muted leading-[1.9] mb-12">

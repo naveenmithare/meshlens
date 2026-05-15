@@ -179,13 +179,11 @@ html[data-font="space-grotesk"] body { font-family: var(--font-space-grotesk), s
 }
 
 /* ── Resolution-responsive scaling ──────────── */
+/* Avoid zoom < 1 on phones/tablets: it shrinks tap targets and fights MeshAtlas’s own scaling. */
 .page-responsive {
   zoom: 1;
 }
-@media (max-width: 1024px) {
-  .page-responsive { zoom: 0.78; }
-}
-@media (min-width: 1025px) and (max-width: 1280px) {
+@media (min-width: 1024px) and (max-width: 1280px) {
   .page-responsive { zoom: 0.88; }
 }
 @media (min-width: 1281px) and (max-width: 1440px) {
